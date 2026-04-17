@@ -36,13 +36,14 @@ def to_api_schema(canonical: dict) -> dict:
     returned dict is a fresh structure containing only keywords Gemini and
     OpenAI structured-output endpoints accept.
 
-    Raises SchemaAdapterError if an internal $ref cannot be resolved.
+    Raises SchemaAdapterError if an internal $ref cannot be resolved or a
+    circular $ref chain is detected.
     """
     root = deepcopy(canonical)
-    return _walk(root, root)
+    return _walk(root, root, frozenset())
 
 
-def _walk(node: Any, root: dict) -> Any:
+def _walk(node: Any, root: dict, seen: frozenset[str]) -> Any:
     if isinstance(node, dict):
         # Pure-ref node (e.g., {"$ref": "#/definitions/Foo"}) — inline then recurse.
         # We only treat a node as a pure ref when $ref is its only key; if it has
@@ -51,8 +52,13 @@ def _walk(node: Any, root: dict) -> Any:
         # conservative path: only inline pure-$ref nodes; otherwise drop the $ref
         # and keep the siblings.
         if "$ref" in node and len(node) == 1:
-            resolved = _resolve_ref(node["$ref"], root)
-            return _walk(deepcopy(resolved), root)
+            ref = node["$ref"]
+            if ref in seen:
+                raise SchemaAdapterError(
+                    f"Circular $ref detected: {ref!r} (path: {sorted(seen)})"
+                )
+            resolved = _resolve_ref(ref, root)
+            return _walk(deepcopy(resolved), root, seen | {ref})
 
         out: dict[str, Any] = {}
         for k, v in node.items():
@@ -68,11 +74,11 @@ def _walk(node: Any, root: dict) -> Any:
                 # These exist only to host $ref targets. We've already inlined
                 # all refs via recursion; drop the ref-target pools.
                 continue
-            out[k] = _walk(v, root)
+            out[k] = _walk(v, root, seen)
         return out
 
     if isinstance(node, list):
-        return [_walk(x, root) for x in node]
+        return [_walk(x, root, seen) for x in node]
 
     return node
 

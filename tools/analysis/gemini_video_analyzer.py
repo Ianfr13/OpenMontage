@@ -349,6 +349,10 @@ class GeminiVideoAnalyzer(BaseTool):
         # Fallback-model branch: try full depth first, then compact retry.
         try:
             return self._run_once(client, file_ref, prompt, model), model
+        except errors.ClientError as exc:
+            raise VideoAnalysisRetryExhausted(
+                f"Both preview and fallback model ({model}) unavailable: {exc}"
+            ) from exc
         except VideoAnalysisError:
             compact_prompt = self._build_prompt(inputs, depth="compact")
             try:

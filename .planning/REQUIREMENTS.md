@@ -42,8 +42,8 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 - [ ] **CHUNK-01**: `lib/video_chunker.py` splits any video into ≤5 min keyframe-aligned chunks via FFmpeg (`-c copy -reset_timestamps 1`); returns chunk list with `[start_global, end_global, local_path]` tuples
 - [ ] **CHUNK-02**: When video is ≤5 min, provider bypasses chunking and analyzes in one call
 - [ ] **CHUNK-03**: When video is >5 min, the caller (selector or meta skill) analyzes chunks with bounded concurrency (`concurrent.futures.ThreadPoolExecutor`, max 4 workers default, configurable), respecting rate limits
-- [ ] **CHUNK-04**: `lib/analysis_merger.py` merges per-chunk `video_analysis` artifacts into a single canonical artifact via documented rules: editing fields recomputed globally, narrative hook/arc from chunk 1, CTA from last chunk, section_structure concatenated with global timecodes, audio fields weighted-averaged by chunk duration, visual fields majority-vote weighted by chunk duration
-- [ ] **CHUNK-05**: Merged artifact includes `chunking_metadata` (chunk count, per-chunk cost, total duration, provider used per chunk) for traceability
+- [x] **CHUNK-04**: `lib/analysis_merger.py` merges per-chunk `video_analysis` artifacts into a single canonical artifact via documented rules: editing fields recomputed globally, narrative hook/arc from chunk 1, CTA from last chunk, section_structure concatenated with global timecodes, audio fields weighted-averaged by chunk duration, visual fields majority-vote weighted by chunk duration
+- [x] **CHUNK-05**: Merged artifact includes `chunking_metadata` (chunk count, per-chunk cost, total duration, provider used per chunk) for traceability
 - [ ] **CHUNK-06**: Cost tracker `tools/cost_tracker.py` records each chunk analysis separately per provider; estimated cost surfaced before running for videos >5 min
 
 ### Synthesizer — pipeline generation + staging
@@ -150,8 +150,8 @@ Deferred — tracked but not in current roadmap.
 | CHUNK-01 | Phase 4 | Pending |
 | CHUNK-02 | Phase 4 | Pending |
 | CHUNK-03 | Phase 4 | Pending |
-| CHUNK-04 | Phase 4 | Pending |
-| CHUNK-05 | Phase 4 | Pending |
+| CHUNK-04 | Phase 4 | Complete |
+| CHUNK-05 | Phase 4 | Complete |
 | CHUNK-06 | Phase 4 | Pending |
 | SYNTH-01 | Phase 5 | Pending |
 | SYNTH-02 | Phase 5 | Pending |

@@ -81,7 +81,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `lib/analysis_merger.py` merges per-chunk artifacts into a single artifact: global timecodes are normalized, narrative hook comes from chunk 1, CTA from the last chunk, audio fields weighted-averaged by duration
   4. Merged artifact includes `chunking_metadata` (chunk count, per-chunk cost, total duration, provider); `cost_tracker` records each chunk separately
   5. Estimated cost is surfaced before any analysis run on a video >5 min; the user can abort before tokens are spent
-**Plans**: TBD
+**Plans**: 3 plans
+- [x] 04-01-PLAN.md — lib/video_chunker.py + VideoChunkingError + unit tests (CHUNK-01, CHUNK-02)
+- [x] 04-02-PLAN.md — lib/analysis_merger.py per-dimension merge rules + unit tests (CHUNK-04, CHUNK-05)
+- [ ] 04-03-PLAN.md — lib/chunked_analyzer.py ThreadPoolExecutor + cost_tracker + contract test (CHUNK-03, CHUNK-06)
 **UI hint**: no
 
 ### Phase 5: Synthesizer + Staging
@@ -133,7 +136,7 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | 1. Schema + Adapter | 0/? | Not started | - |
 | 2. Gemini Provider | 4/4 | Complete    | 2026-04-17 |
 | 3. OpenRouter Provider | 3/3 | Complete    | 2026-04-17 |
-| 4. Chunking | 0/? | Not started | - |
+| 4. Chunking | 0/3 | Not started | - |
 | 5. Synthesizer + Staging | 0/? | Not started | - |
 | 6. Skills + Integration | 0/? | Not started | - |
 | 7. Tests | 0/? | Not started | - |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-04-17T22:45:38.394Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-04-17T22:47:21.676Z"
 last_activity: 2026-04-17 -- Phase 07 Plan 01 complete (TEST-01 + TEST-03 green)
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 23
-  completed_plans: 22
-  percent: 96
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -70,6 +70,7 @@ Progress: [█████████░] 91%
 | Phase 06 P01 | 4m | 2 tasks | 1 files |
 | Phase 07 P01 | 3min | 2 tasks | 3 files |
 | Phase 07-tests P02 | 15m | 3 tasks | 7 files |
+| Phase 07-tests P03 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,9 @@ Recent decisions affecting current work:
 - [Phase 07-tests]: 07-01: Glob-at-collection pytest.mark.parametrize over pipeline_defs/*.yaml guarantees future pipelines are auto-covered by the backward-compat gate
 - [Phase 07-tests]: Integration tests double-gated: RUN_INTEGRATION_TESTS=1 + fixture file existence + provider key. Missing gate -> SKIP never FAIL, so default pytest stays green.
 - [Phase 07-tests]: Integration tests drive the VideoAnalyzerSelector (not raw provider tools) so Phase 2 routing is part of acceptance. Assertions target SHAPE (schema validity + top-level keys + chunking metadata) — no numeric value assertions (non-deterministic real-model output).
+- [Phase 07-tests]: 07-03: load_pipeline round-trip uses name+stages equality (semantic), not dict-deep equality — robust to ruamel YAML re-dump drift on comments/whitespace.
+- [Phase 07-tests]: 07-03: numeric divergence in real-mode TEST-05 is LOGGED (not asserted); pacing_style enum equality remains HARD assertion — follows CONTEXT.md 'divergences informational' rule.
+- [Phase 07-tests]: 07-03: dual-mode contract test pattern — mocked branch always runs, real branch skipif-gated on env+keys+fixture; keeps tests/contracts/ key-free while making real-mode opt-in visible via pytest -rs.
 
 ### Pending Todos
 
@@ -130,6 +134,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T22:45:38.387Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-04-17T22:47:21.668Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None

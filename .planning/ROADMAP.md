@@ -131,7 +131,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 - [x] 07-01-PLAN.md — tests/contracts/test_v1_backward_compat.py (iterates 12 pipeline_defs) + TEST-01 full-suite API-key-free confirmation (TEST-01, TEST-03)
 - [x] 07-02-PLAN.md — tests/integration/ scaffolding (__init__.py, conftest.py, README.md, pytest.ini marker, .gitignore) + gemini/openrouter provider suites × 3 fixture tiers (TEST-02)
-- [ ] 07-03-PLAN.md — tests/contracts/test_phase7_e2e_smoke.py (mocked synthesize→accept roundtrip) + tests/contracts/test_phase7_cross_provider_tolerance.py (mocked always + real-mode skipif) (TEST-04, TEST-05)
+- [x] 07-03-PLAN.md — tests/contracts/test_phase7_e2e_smoke.py (mocked synthesize→accept roundtrip) + tests/contracts/test_phase7_cross_provider_tolerance.py (mocked always + real-mode skipif) (TEST-04, TEST-05)
 **UI hint**: no
 
 ## Progress

@@ -11,7 +11,7 @@
     "description": { "type": "string" },
     "category": {
       "type": "string",
-      "enum": ["talking_head", "generated", "hybrid", "screen_recording", "animation", "cinematic", "custom"]
+      "enum": ["talking_head", "generated", "hybrid", "screen_recording", "animation", "cinematic", "documentary", "custom"]
     },
     "stability": {
       "type": "string",
@@ -132,6 +132,11 @@
       }
     },
     "metadata": { "type": "object" },
+    "production_modes": {
+      "type": "array",
+      "description": "Optional production-mode variants for pipelines that support multiple capture/render modes (e.g., screen-demo real vs synthetic).",
+      "items": { "type": "object" }
+    },
     "expected_analysis": {
       "type": "object",
       "description": "Signals used by pipeline_synthesizer (Phase 5) for rule-based matching. Optional and additive; absence = no signal contribution.",

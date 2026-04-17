@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
-status: executing
-stopped_at: Completed 01-03-PLAN.md (lib/schema_adapter.py + 16 unit tests)
-last_updated: "2026-04-17T15:39:13.271Z"
+status: verifying
+stopped_at: Completed 01-04-PLAN.md (ARTIFACT_NAMES + CANONICAL_STAGE_ARTIFACTS registration + 17 regression tests); Phase 01 ready for verification
+last_updated: "2026-04-17T15:45:38.183Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 Phase: 01 (schema-adapter) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-17
 
 Progress: [░░░░░░░░░░] 0%
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 3min | 2 tasks | 3 files |
 | Phase 01 P02 | 8min | 2 tasks | 2 files |
 | Phase 01 P03 | 4min | 2 tasks | 2 files |
+| Phase 01 P04 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 01-03]: Hand-rolled ~30-line `$ref` inliner (not jsonref / not jsonschema.RefResolver) — zero new deps, plain-dict contract, avoids deprecated RefResolver API
 - [Phase 01-03]: Conservative `$ref`-with-siblings handling — drop `$ref` keyword, preserve siblings (Draft 2020-12 allows siblings; keeping `$ref` would leak to provider API)
 - [Phase 01-03]: `SchemaAdapterError(ValueError)` subclass raised on unresolvable/external refs — matches `lib/checkpoint.py:CheckpointValidationError` convention
+- [Phase 01]: Phase 01-04: STAGES / ALL_KNOWN_STAGES intentionally unchanged — Phase 6 owns pipeline-manifest integration (RESEARCH Finding 8)
+- [Phase 01]: Phase 01-04: CANONICAL_STAGE_ARTIFACTS values are bare artifact names, not schema paths — matches existing load_schema resolver convention
+- [Phase 01]: Phase 01-04: v1.0 brief schema locked by explicit regression test asserting required-set + version const (defense against accidental Phase 1 drift)
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T15:39:13.266Z
-Stopped at: Completed 01-03-PLAN.md (lib/schema_adapter.py + 16 unit tests)
+Last session: 2026-04-17T15:45:37.842Z
+Stopped at: Completed 01-04-PLAN.md (ARTIFACT_NAMES + CANONICAL_STAGE_ARTIFACTS registration + 17 regression tests); Phase 01 ready for verification
 Resume file: None

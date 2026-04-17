@@ -112,7 +112,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `skills/meta/video-reference-analyst.md` consumes structured `video_analysis` artifact fields as the primary path; freeform fallback activates only when structured fields are absent (backward compat preserved)
   3. `AGENT_GUIDE.md` "Reference Video Entry Point" section distinguishes "make something like this" (routes to `video-reference-analyst.md`) from "synthesize a pipeline from this reference" (routes to `reference-synthesis.md`); an agent reading only `AGENT_GUIDE.md` reaches the synthesis skill in ≤2 hops
   4. `CONTEXT.md` tools table includes rows for `video_analyzer_selector`, `gemini_video_analyzer`, `openrouter_video_analyzer`; `requirements.txt` adds `google-genai>=1.73`, `openai>=1.0`, `ruamel.yaml>=0.18` with no conflicting deps
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 06-01-PLAN.md — skills/meta/reference-synthesis.md NEW meta skill (orchestrates video → selector → analyze → synthesize → 2 awaiting_human checkpoints → accept/reject) (SKILL-04)
+- [ ] 06-02-PLAN.md — Refactor skills/meta/video-reference-analyst.md to consume structured video_analysis artifact with freeform fallback preserved (SKILL-05)
+- [ ] 06-03-PLAN.md — AGENT_GUIDE.md disambiguation + CONTEXT.md tools/libraries extension + lib/env_loader.py env var docs + requirements.txt audit (SKILL-06, INT-01, INT-02, INT-03)
 **UI hint**: no
 
 ### Phase 7: Tests
@@ -141,5 +144,5 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | 3. OpenRouter Provider | 3/3 | Complete    | 2026-04-17 |
 | 4. Chunking | 3/3 | Complete    | 2026-04-17 |
 | 5. Synthesizer + Staging | 3/3 | Complete    | 2026-04-17 |
-| 6. Skills + Integration | 0/? | Not started | - |
+| 6. Skills + Integration | 0/3 | Not started | - |
 | 7. Tests | 0/? | Not started | - |

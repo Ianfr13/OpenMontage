@@ -137,6 +137,10 @@ class VideoAnalyzerSelector(BaseTool):
             for t in available:
                 if t.name == preferred:
                     return t
+            # REVIEW MD-05: explicit preference with no match must NOT
+            # silently fall through to env-var logic — the caller asked
+            # for a specific provider and deserves a deterministic error.
+            return None
 
         # 2. Env override
         env_pref = os.environ.get("VIDEO_ANALYZER_PROVIDER", "auto").lower()

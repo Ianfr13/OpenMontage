@@ -17,7 +17,7 @@ This milestone adds two capabilities to OpenMontage: structured video analysis a
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Schema + Adapter** — Canonical `video_analysis` schema, `schema_adapter`, and checkpoint registration; the contract every downstream component depends on
-- [ ] **Phase 2: Gemini Provider** — `gemini_video_analyzer` + `video_analyzer_selector` + Layer 3 Gemini skill; first end-to-end analysis path with selector routing from day one
+- [x] **Phase 2: Gemini Provider** — `gemini_video_analyzer` + `video_analyzer_selector` + Layer 3 Gemini skill; first end-to-end analysis path with selector routing from day one (completed 2026-04-17)
 - [ ] **Phase 3: OpenRouter Provider** — `openrouter_video_analyzer` slots into the existing selector; both providers produce artifacts passing the same canonical schema
 - [ ] **Phase 4: Chunking** — `lib/video_chunker.py` + `lib/analysis_merger.py`; videos >5 min analyzed in bounded-concurrency chunks with merged canonical output
 - [ ] **Phase 5: Synthesizer + Staging** — `lib/pipeline_synthesizer.py` with rule-based matching, staging path, semantic validation, and human-approval gating
@@ -128,7 +128,7 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Schema + Adapter | 0/? | Not started | - |
-| 2. Gemini Provider | 0/? | Not started | - |
+| 2. Gemini Provider | 4/4 | Complete    | 2026-04-17 |
 | 3. OpenRouter Provider | 0/? | Not started | - |
 | 4. Chunking | 0/? | Not started | - |
 | 5. Synthesizer + Staging | 0/? | Not started | - |

@@ -67,6 +67,71 @@ def valid_artifact() -> dict:
     return copy.deepcopy(_minimal())
 
 
+def _deep_merge(dst: dict, src: dict) -> None:
+    """In-place recursive dict merge: override ``dst`` with ``src``.
+
+    Nested dicts are merged; all other values (including lists) are replaced.
+    Used by ``fake_video_chunks`` so per-chunk overrides target nested fields
+    (``editing_pacing.cuts_per_minute``) without clobbering siblings.
+    """
+    for k, v in src.items():
+        if isinstance(v, dict) and isinstance(dst.get(k), dict):
+            _deep_merge(dst[k], v)
+        else:
+            dst[k] = v
+
+
+@pytest.fixture
+def fake_video_chunks():
+    """Factory for ``list[(Chunk, artifact_dict)]`` used by merger tests.
+
+    Each call returns a list of ``n`` ``(Chunk, artifact)`` tuples. Every
+    artifact starts as a deep copy of the Phase 1 ``minimal_video_analysis``
+    fixture (schema-valid) and is patched by ``_deep_merge`` with the
+    matching ``overrides[i]`` dict. The ``Chunk.start_global`` /
+    ``end_global`` are computed from ``chunk_seconds`` so the merger sees
+    the same globally-shifted timeline the real pipeline would.
+
+    Usage:
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"editing_pacing": {"cuts_per_minute": 6.0, "total_shots": 5}},
+                {"editing_pacing": {"cuts_per_minute": 3.0, "total_shots": 7}},
+                {"editing_pacing": {"cuts_per_minute": 9.0, "total_shots": 9}},
+            ],
+        )
+    """
+    from lib.video_chunker import Chunk
+
+    def _build(
+        n: int = 3,
+        overrides: list[dict] | None = None,
+        chunk_seconds: float = 300.0,
+    ) -> list:
+        ov = overrides or [{} for _ in range(n)]
+        out = []
+        for i in range(n):
+            art = copy.deepcopy(_minimal())
+            if i < len(ov) and ov[i]:
+                _deep_merge(art, ov[i])
+            start = i * chunk_seconds
+            end = start + chunk_seconds
+            out.append(
+                (
+                    Chunk(
+                        start_global=start,
+                        end_global=end,
+                        local_path=f"/tmp/chunk_{i:03d}.mp4",
+                    ),
+                    art,
+                )
+            )
+        return out
+
+    return _build
+
+
 @pytest.fixture
 def fake_video(tmp_path) -> Path:
     """Return a tiny on-disk file that passes ``Path.exists()`` + ``is_file()``."""

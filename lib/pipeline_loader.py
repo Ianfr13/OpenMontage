@@ -51,9 +51,20 @@ def load_pipeline(name: str, defs_dir: Optional[Path] = None) -> dict[str, Any]:
 
 
 def list_pipelines(defs_dir: Optional[Path] = None) -> list[str]:
-    """List all available pipeline manifest names."""
+    """List all available pipeline manifest names.
+
+    Excludes ``_staging/`` and any other underscore-prefixed subdirectory,
+    even if a future refactor moves to a recursive glob (SYNTH-07
+    defense-in-depth). The filter is redundant under the current
+    non-recursive ``glob("*.yaml")`` — it can only yield direct children —
+    but keeping it explicit future-proofs the exclusion.
+    """
     defs_dir = defs_dir or PIPELINE_DEFS_DIR
-    return [p.stem for p in defs_dir.glob("*.yaml")]
+    return [
+        p.stem
+        for p in defs_dir.glob("*.yaml")
+        if not p.parent.name.startswith("_")
+    ]
 
 
 def _condition_is_active(condition: Optional[str], context: Optional[dict[str, Any]]) -> bool:

@@ -131,13 +131,21 @@ def test_module_shape():
         assert hasattr(mod, name), f"module missing {name}"
         assert callable(getattr(mod, name)), f"{name} is not callable"
 
-    # No LOCALLY-defined class (imports from other modules are fine).
-    local_classes = [
+    # No LOCALLY-defined class OTHER THAN exception subclasses (imports from
+    # other modules are fine). Per Plan 05-01 handoff + Plan 05-02 spec,
+    # SynthesisValidationError is an idiomatic Python Exception subclass — it
+    # does not violate SYNTH-01 "lib module, no class" because the primary
+    # public surface remains module-level functions. Exceptions are data, not
+    # orchestration classes.
+    local_non_exception_classes = [
         name
         for name, obj in inspect.getmembers(mod, inspect.isclass)
         if getattr(obj, "__module__", "") == mod.__name__
+        and not issubclass(obj, BaseException)
     ]
-    assert local_classes == [], f"Unexpected locally-defined classes: {local_classes}"
+    assert local_non_exception_classes == [], (
+        f"Unexpected locally-defined non-exception classes: {local_non_exception_classes}"
+    )
 
 
 # ----------------------------------------------------------------------------

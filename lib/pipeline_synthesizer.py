@@ -37,6 +37,7 @@ This plan's ``synthesize_pipeline`` does NOT:
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -44,6 +45,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Literal
 
+import jsonschema
 from ruamel.yaml import YAML
 
 from lib.pipeline_loader import PIPELINE_DEFS_DIR, list_pipelines, load_pipeline
@@ -54,6 +56,19 @@ from lib.pipeline_loader import PIPELINE_DEFS_DIR, list_pipelines, load_pipeline
 # ---------------------------------------------------------------------------
 
 STAGING_DIR = PIPELINE_DEFS_DIR / "_staging"
+
+#: Root of the ``skills/`` tree — used by ``validate_synthesized_pipeline`` to
+#: resolve ``stage["skill"]`` paths. Convention: ``stage["skill"]`` is a path
+#: relative to ``skills/`` without the ``.md`` extension.
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
+
+#: Path to the pipeline_synthesis run-record schema (SYNTH-09 shipped Phase 1).
+_SYNTHESIS_SCHEMA_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "schemas"
+    / "artifacts"
+    / "pipeline_synthesis.schema.json"
+)
 
 #: Adjacency is defined by neighbor index in this chain. Two styles are
 #: "adjacent" iff |idx(a) - idx(b)| == 1.
@@ -70,6 +85,145 @@ Mode = Literal["template", "replica"]
 #: Cap the -vN collision-suffix loop so adversarial filesystems cannot cause
 #: unbounded work (T-05-04 DoS mitigation).
 _MAX_COLLISION_SUFFIX = 99
+
+
+# ---------------------------------------------------------------------------
+# Semantic validation (SYNTH-08) — Plan 05-02
+# ---------------------------------------------------------------------------
+
+
+class SynthesisValidationError(Exception):
+    """Raised when a synthesized pipeline fails semantic validation.
+
+    Attributes:
+        issues: ``list[str]`` of human-readable issue descriptions. Consumers
+            that need per-issue structure should inspect ``.issues`` directly
+            rather than re-parse ``str(exc)``.
+
+    This exception is raised only by ``raise_if_invalid`` (the explicit
+    escalation helper). ``validate_synthesized_pipeline`` itself NEVER raises
+    — it returns the issues list for callers to surface as they see fit.
+    """
+
+    def __init__(self, issues: list[str]):
+        self.issues = list(issues)
+        super().__init__(
+            "\n".join(self.issues) if self.issues else "validation failed"
+        )
+
+
+def validate_synthesized_pipeline(manifest: dict[str, Any]) -> list[str]:
+    """Semantic validation of a synthesized pipeline manifest.
+
+    Checks performed per stage:
+
+    * If the stage has a ``skill:`` key, verify that ``skills/<skill>.md``
+      exists on disk.
+    * Every tool listed in ``tools_available`` must appear in
+      ``registry.list_all()`` after ``registry.ensure_discovered()``.
+
+    Stages without a ``skill`` key (legacy ``agent:``-only stages) are not
+    flagged. Stages with an absent or empty ``tools_available`` list produce
+    no issues.
+
+    Returns:
+        list[str]: human-readable issue descriptions. An empty list means
+        the manifest passed semantic validation.
+
+    This function NEVER raises. Use :func:`raise_if_invalid` for a raising
+    convenience wrapper.
+    """
+    # Local import avoids a startup-time dependency on the tool registry
+    # (and the accompanying importlib walk) for callers that only need the
+    # matcher / staging writer from this module.
+    from tools.tool_registry import registry
+
+    # Idempotent — safe to call in tests that clear the registry between
+    # runs (Pitfall 6 mitigation: registry.list_all() returns empty until
+    # ensure_discovered has been called once per process).
+    registry.ensure_discovered()
+    known_tools = set(registry.list_all())
+
+    issues: list[str] = []
+    for stage in manifest.get("stages", []) or []:
+        stage_name = stage.get("name", "<unnamed>")
+
+        skill = stage.get("skill")
+        if skill:
+            skill_path = SKILLS_DIR / f"{skill}.md"
+            if not skill_path.exists():
+                issues.append(
+                    f"stage {stage_name!r}: skill file not found: {skill_path}"
+                )
+
+        for tool in stage.get("tools_available", []) or []:
+            if tool not in known_tools:
+                issues.append(
+                    f"stage {stage_name!r}: tool {tool!r} not in registry "
+                    f"(known {len(known_tools)} tools after ensure_discovered)"
+                )
+
+    return issues
+
+
+def raise_if_invalid(manifest: dict[str, Any]) -> None:
+    """Raise :class:`SynthesisValidationError` iff ``manifest`` has issues.
+
+    Thin wrapper around :func:`validate_synthesized_pipeline` for callers
+    that want a single call-site to branch on. No-op on a valid manifest.
+    """
+    issues = validate_synthesized_pipeline(manifest)
+    if issues:
+        raise SynthesisValidationError(issues)
+
+
+# ---------------------------------------------------------------------------
+# Run-record helpers (SYNTH-09 emission — Plan 05-02)
+# ---------------------------------------------------------------------------
+
+
+def _load_synthesis_schema() -> dict[str, Any]:
+    """Return the parsed ``pipeline_synthesis.schema.json`` dict."""
+    with open(_SYNTHESIS_SCHEMA_PATH) as f:
+        return json.load(f)
+
+
+def _unified_diff(
+    base_manifest: dict[str, Any],
+    synthesized: dict[str, Any],
+    *,
+    base_name: str,
+) -> str:
+    """Return a unified-diff between ``base_manifest`` and ``synthesized``.
+
+    Both manifests are dumped through the same ruamel.yaml configuration
+    used by the staging writer so the diff reflects actual YAML output —
+    not Python dict repr. When both manifests dump to byte-identical YAML,
+    the returned string is empty (``""``).
+    """
+    yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.width = 120
+    yaml.default_flow_style = False
+
+    buf_a, buf_b = StringIO(), StringIO()
+    yaml.dump(base_manifest, buf_a)
+    yaml.dump(synthesized, buf_b)
+
+    a_text = buf_a.getvalue()
+    b_text = buf_b.getvalue()
+    if a_text == b_text:
+        return ""
+
+    diff_lines = difflib.unified_diff(
+        a_text.splitlines(keepends=True),
+        b_text.splitlines(keepends=True),
+        fromfile=f"base/{base_name}.yaml",
+        tofile=f"synthesized/{base_name}.yaml",
+        n=3,
+    )
+    return "".join(diff_lines)
 
 
 # ---------------------------------------------------------------------------

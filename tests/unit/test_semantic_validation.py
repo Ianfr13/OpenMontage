@@ -55,10 +55,17 @@ def isolated_defs(tmp_path, monkeypatch):
 
 @pytest.fixture
 def valid_manifest():
-    """Load the real cinematic manifest — every skill exists and all tools are registered."""
+    """Load a real base manifest whose skills exist and whose tools are ALL registered.
+
+    ``animated-explainer.yaml`` is used rather than ``cinematic.yaml`` because
+    cinematic references ``web_search`` in its ``research`` stage — a capability
+    that is provided by the agent's intrinsic web tool, NOT by a BaseTool in
+    ``tools/tool_registry``. That desync is pre-existing and out of scope for
+    Plan 05-02; see ``.planning/phases/05-synthesizer/deferred-items.md``.
+    """
     from lib.pipeline_loader import load_pipeline
 
-    return copy.deepcopy(load_pipeline("cinematic"))
+    return copy.deepcopy(load_pipeline("animated-explainer"))
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +141,7 @@ def test_validate_empty_returns_no_issues(valid_manifest):
     from lib.pipeline_synthesizer import validate_synthesized_pipeline
 
     issues = validate_synthesized_pipeline(valid_manifest)
-    assert issues == [], f"expected no issues for valid cinematic manifest, got: {issues}"
+    assert issues == [], f"expected no issues for valid base manifest, got: {issues}"
 
 
 # ---------------------------------------------------------------------------

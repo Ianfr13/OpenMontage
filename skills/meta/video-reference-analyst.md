@@ -10,6 +10,11 @@ If the user says "edit this video" or "cut this into clips," route to the approp
 footage-led pipeline (clip-factory, talking-head, hybrid) instead. This skill is for
 REFERENCE-based production.
 
+**Sister skill for pipeline synthesis:** If the user wants to save this reference's
+*format as a reusable pipeline template* (not just generate concepts inspired by it),
+route to `skills/meta/reference-synthesis.md` instead. That skill orchestrates the
+end-to-end structured analysis → pipeline synthesis → human approval flow.
+
 ## Detection Signals
 
 Trigger this skill when:
@@ -24,6 +29,92 @@ Do NOT trigger when:
 - User just wants a transcript → use TranscriptFetcher directly
 
 ## Protocol
+
+## Path Selection
+
+This skill has two execution paths. Choose based on input shape:
+
+**Structured Path (PRIMARY)** — activate when:
+- The caller passed an `analysis_artifact` parameter, OR
+- A prior skill (e.g., `reference-synthesis.md`) already produced a canonical `video_analysis` artifact matching `schemas/artifacts/video_analysis.schema.json`, OR
+- The agent ran `tools/analysis/video_analyzer_selector` itself and received `result.data` with the 4 canonical dimension keys present
+- Proceed to `## Structured Path` below.
+
+**Freeform Fallback** — activate when:
+- The input is a raw URL and no structured artifact exists yet, AND the user's intent is concepts-only (not a pipeline template), OR
+- The legacy `VideoAnalyzer` tool was used and produced a `VideoAnalysisBrief` instead of the canonical `video_analysis` artifact, OR
+- Structured extraction failed or returned low confidence across all 4 dimensions
+- Proceed to `## Freeform Fallback` below.
+
+**Routing to sister skills:**
+- User wants a reusable pipeline template, not creative concepts → `skills/meta/reference-synthesis.md`
+- User wants concepts to create a new inspired-by video → stay here (both paths eventually converge at the Sample-First / Pipeline Entry sections)
+
+## Structured Path
+
+When a canonical `video_analysis` artifact is available, consume its four dimension fields
+directly. Do **not** re-derive them from raw keyframes — the selector/provider pipeline
+already did that and surfaced explicit `confidence` levels for each.
+
+### Step S1: Load the structured artifact
+
+The artifact shape is defined in `schemas/artifacts/video_analysis.schema.json`. Four top-level
+dimension keys are always present:
+
+- `editing_pacing` — pacing_style, cuts_per_minute, shot_type_distribution, motion_type_distribution
+- `audio` — has_narration, music_presence, voice_traits
+- `visual_style` — color_palette, dominant_colors_hex, typography_style
+- `narrative` — hook_type, arc, section_structure, cta_present
+
+Plus a top-level `confidence` map (`{editing_pacing: low|medium|high, ...}`) and
+`provider_used` (`gemini` or `openrouter`). When the artifact came from `analyze_chunked`,
+`chunking_metadata` is also present.
+
+The canonical producer is `tools/analysis/video_analyzer_selector` — its `ToolResult.data`
+IS the artifact (see selector docstring + ANLZ-06). Do **not** read `ToolResult.model` or
+other selector-level metadata as if they were dimension data; only `data` is canonical.
+
+### Step S2: Present the grounded summary (structured version)
+
+Generate the user-facing summary by reading fields directly — do NOT paraphrase or invent:
+
+| Section | Source field(s) |
+|---------|-----------------|
+| **Content** | narrative.arc + narrative.section_structure titles |
+| **Style** | editing_pacing.pacing_style + visual_style.color_palette tone + audio.music_presence |
+| **Structure** | narrative.section_structure count + editing_pacing.cuts_per_minute |
+| **Motion** | editing_pacing.motion_type_distribution — read the dominant key |
+| **What makes it work** | narrative.hook_type + editing_pacing.pacing_style + any low-confidence dimensions flagged as "uncertain" |
+
+When `confidence["<dimension>"] == "low"`, flag that dimension as uncertain in the summary rather than presenting it as fact. Example: "The audio architecture is uncertain (low confidence) — I can re-analyze with `analysis_depth='deep'` if it matters."
+
+### Step S3: Motion classification from the structured field
+
+The `editing_pacing.motion_type_distribution` map replaces the per-scene `motion_type` heuristic
+from the legacy brief. Read the dominant key:
+
+- `motion_clip` dominant → reference uses video generation (Kling, Sora, VEO, etc.) → propose video gen
+- `animated_still` dominant → reference uses still images with Ken Burns/pan-zoom → propose image gen + Remotion composition
+- `static_image` dominant → reference uses flat stills → propose image gen without motion
+- Mixed (no key > 0.6) → note the mix and propose a hybrid
+
+**Never guess motion from thumbnails when the structured field exists.** The structured field
+reflects the provider's scene-level extraction; guessing from a thumbnail risks proposing the
+wrong pipeline.
+
+### Step S4: Converge with the shared flow
+
+After the structured summary is presented and validated with the user, continue with the
+shared capability audit, critical questions, and Layer 3 skill gate — those sections
+(`### Step 2: Capability Audit`, `### Step 3: Ask Critical Questions`, `### Step 4b: Layer 3 Skill Gate`,
+`### Step 5: Sample-First Production`, `### Step 6: Enter Pipeline`) apply identically to
+both paths. Jump to those sections below.
+
+## Freeform Fallback
+
+This is the pre-Phase-6 flow. Activate only when no structured `video_analysis` artifact
+is available (see `## Path Selection` above for routing). Preserves full backward
+compatibility with the legacy `VideoAnalyzer` tool + `VideoAnalysisBrief` output shape.
 
 ### Step 1: Analyze the Reference
 
@@ -80,6 +171,11 @@ enrich the VideoAnalysisBrief with:
 Update the brief's `content_analysis`, `style_profile`, and `replication_guidance`
 fields with your visual observations. This is where the analysis becomes truly
 comprehensive — the tools provide structure; your vision provides understanding.
+
+**After Step 1, both paths converge.** The sections below (`### Step 2: Capability Audit`
+through `### Step 6: Enter Pipeline`) apply identically whether you arrived here via the
+Structured Path or the Freeform Fallback. The only difference is: Structured Path skips
+Step 1 entirely because the structured artifact already contains the analysis.
 
 ### Step 2: Capability Audit
 
@@ -383,6 +479,8 @@ When the user provides multiple reference URLs:
 | No captions available | Download video, transcribe with Whisper locally |
 | Scene detection fails | Fall back to uniform frame sampling |
 | All analysis fails | Ask user to describe the reference video verbally, proceed with standard creative intake |
+| Structured artifact missing required dimension (schema violation) | Fall back to Freeform Fallback path; log the violation; do not block the user |
+| All 4 dimensions confidence=low | Tell user: "Structured analysis had low confidence across all dimensions — recommend re-running with `analysis_depth='deep'` or different provider. I'll proceed with freeform for now." |
 
 Never silently skip analysis steps. If something fails, tell the user what happened
 and what the impact is on the analysis quality.

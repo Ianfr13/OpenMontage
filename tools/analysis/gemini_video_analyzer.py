@@ -207,6 +207,8 @@ class GeminiVideoAnalyzer(BaseTool):
             "max_poll_seconds": {
                 "type": "number",
                 "default": DEFAULT_MAX_POLL_SECONDS,
+                "minimum": 1,
+                "maximum": 1800,
             },
         },
     }
@@ -402,9 +404,14 @@ class GeminiVideoAnalyzer(BaseTool):
                 error=f"Gemini client init failed: {exc}",
             )
 
-        max_poll = float(
-            inputs.get("max_poll_seconds") or DEFAULT_MAX_POLL_SECONDS
-        )
+        raw = inputs.get("max_poll_seconds") or DEFAULT_MAX_POLL_SECONDS
+        try:
+            max_poll = float(raw)
+        except (TypeError, ValueError):
+            max_poll = DEFAULT_MAX_POLL_SECONDS
+        # Clamp to [1s, 30min]. See REVIEW MD-04: unbounded caller input
+        # (e.g., max_poll_seconds=999999) would pin the process for ~11 days.
+        max_poll = max(1.0, min(max_poll, 1800.0))
 
         uploaded = None
         model_used: str | None = None

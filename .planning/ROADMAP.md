@@ -65,7 +65,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `finish_reason == "length"` (silent truncation) triggers one retry with `analysis_depth="compact"` before raising
   4. Artifacts from both providers pass `jsonschema.validate()` against the same `video_analysis.schema.json`; the selector caller cannot tell which provider was used from the artifact shape (ANLZ-06)
   5. `.agents/skills/openrouter-video-analysis/SKILL.md` exists and is referenced in the tool's `agent_skills`; field-level quality review on one real video completes before phase close (SKILL-03 gate)
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 03-01-PLAN.md — tools/analysis/openrouter_video_analyzer.py + requirements.txt openai pin (OR-01..05, ANLZ-06 tool-side)
+- [ ] 03-02-PLAN.md — .agents/skills/openrouter-video-analysis/SKILL.md + agent_skills wiring audit (OR-06, SKILL-02)
+- [ ] 03-03-PLAN.md — conftest extension + 22 unit tests + contract tests incl. cross-provider consistency (OR-01..06, ANLZ-06, SKILL-02)
 **UI hint**: no
 
 ### Phase 4: Chunking
@@ -129,7 +132,7 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 |-------|----------------|--------|-----------|
 | 1. Schema + Adapter | 0/? | Not started | - |
 | 2. Gemini Provider | 4/4 | Complete    | 2026-04-17 |
-| 3. OpenRouter Provider | 0/? | Not started | - |
+| 3. OpenRouter Provider | 0/3 | Planning complete | - |
 | 4. Chunking | 0/? | Not started | - |
 | 5. Synthesizer + Staging | 0/? | Not started | - |
 | 6. Skills + Integration | 0/? | Not started | - |

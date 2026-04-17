@@ -460,10 +460,21 @@ def synthesize_pipeline(
 ) -> dict[str, Any]:
     """Synthesize a pipeline manifest into ``_staging/`` and return a run record.
 
-    **Scope of this plan (05-01):** returns a run-record-shaped dict WITHOUT
-    ``jsonschema.validate`` against ``pipeline_synthesis.schema.json``. Plan
-    05-02 adds validation + semantic checks + diff computation. Plan 05-03 adds
-    LLM fill and the accept/reject API.
+    **Plan 05-02 additions:**
+      * Runs semantic validation (``validate_synthesized_pipeline``) → sets
+        ``validation_status`` to ``"valid"`` or ``"invalid"`` (never
+        ``"pending"`` — that enum value is reserved for future async flows;
+        see Pitfall 2).
+      * Computes ``diff_against_base`` as unified-diff text of base YAML vs
+        synthesized YAML. Empty string when synthesized equals base byte-for-byte.
+      * ``jsonschema.validate``-s the emitted record against
+        ``schemas/artifacts/pipeline_synthesis.schema.json`` BEFORE return.
+
+    An invalid synthesis (broken skill path / unknown tool in the base
+    manifest) is NOT raised — the record is still returned with
+    ``validation_status == "invalid"`` so the caller (Plan 05-03 meta skill)
+    can surface the issues to the user. Use :func:`raise_if_invalid` for
+    the raising escalation.
 
     Raises ``ValueError`` if ``mode`` is not ``"template"`` or ``"replica"``.
     """
@@ -479,7 +490,7 @@ def synthesize_pipeline(
         )
 
     base_manifest = load_pipeline(match["base_pipeline"])
-    # For Plan 05-01 template/replica are identical — both emit the base
+    # For Plan 05-02 template/replica are identical — both emit the base
     # manifest verbatim. Plan 05-03 diverges them via LLM fill.
     synthesized = base_manifest
 
@@ -500,14 +511,29 @@ def synthesize_pipeline(
     except ValueError:
         rel_staging = str(staging_path)
 
-    return {
+    # --- Plan 05-02: semantic validation + diff + record schema check ---
+    issues = validate_synthesized_pipeline(synthesized)
+    status = "valid" if not issues else "invalid"
+    diff = _unified_diff(
+        base_manifest, synthesized, base_name=match["base_pipeline"]
+    )
+
+    record = {
         "version": "1.0",
         "base_pipeline": match["base_pipeline"],
         "match_score": match["match_score"],
         "mode": mode,
         "staging_path": rel_staging,
-        "diff_against_base": "",  # Plan 05-02 fills this
-        "validation_status": "pending",  # Plan 05-02 finalizes
+        "diff_against_base": diff,
+        "validation_status": status,
         "source_analysis_checksum": checksum,
         "provider_used": provider_used,
+        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+    # Validate-before-return: ensures any drift in the record shape surfaces
+    # at the producer — downstream consumers never see a malformed record
+    # (T-05-11 integrity mitigation).
+    jsonschema.validate(instance=record, schema=_load_synthesis_schema())
+    return record
+
+

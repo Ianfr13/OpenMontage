@@ -283,6 +283,9 @@ class GeminiVideoAnalyzer(BaseTool):
         if not cands:
             raise VideoAnalysisError("No candidates in response")
         finish_reason = getattr(cands[0], "finish_reason", None)
+        # Spec: MAX_TOKENS always retries, even if response.text is parseable —
+        # the JSON is almost certainly missing a trailing } or "confidence" key
+        # and the compact retry is cheaper than guessing.
         if finish_reason == types.FinishReason.MAX_TOKENS:
             raise VideoAnalysisError(
                 "Response truncated (finish_reason=MAX_TOKENS)"

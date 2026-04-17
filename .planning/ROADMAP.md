@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: OpenRouter Provider** — `openrouter_video_analyzer` slots into the existing selector; both providers produce artifacts passing the same canonical schema (completed 2026-04-17)
 - [x] **Phase 4: Chunking** — `lib/video_chunker.py` + `lib/analysis_merger.py`; videos >5 min analyzed in bounded-concurrency chunks with merged canonical output (completed 2026-04-17)
 - [x] **Phase 5: Synthesizer + Staging** — `lib/pipeline_synthesizer.py` with rule-based matching, staging path, semantic validation, and human-approval gating (completed 2026-04-17)
-- [ ] **Phase 6: Skills + Integration** — `reference-synthesis.md` meta skill, refactored `video-reference-analyst.md`, `AGENT_GUIDE.md` disambiguation, `CONTEXT.md` and `requirements.txt` updates
+- [x] **Phase 6: Skills + Integration** — `reference-synthesis.md` meta skill, refactored `video-reference-analyst.md`, `AGENT_GUIDE.md` disambiguation, `CONTEXT.md` and `requirements.txt` updates (completed 2026-04-17)
 - [ ] **Phase 7: Tests** — Contract tests (no key), dual-provider integration, cross-provider consistency, backward compat gate, E2E smoke
 
 ## Phase Details
@@ -114,8 +114,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `CONTEXT.md` tools table includes rows for `video_analyzer_selector`, `gemini_video_analyzer`, `openrouter_video_analyzer`; `requirements.txt` adds `google-genai>=1.73`, `openai>=1.0`, `ruamel.yaml>=0.18` with no conflicting deps
 **Plans**: 3 plans
 - [x] 06-01-PLAN.md — skills/meta/reference-synthesis.md NEW meta skill (orchestrates video → selector → analyze → synthesize → 2 awaiting_human checkpoints → accept/reject) (SKILL-04)
-- [ ] 06-02-PLAN.md — Refactor skills/meta/video-reference-analyst.md to consume structured video_analysis artifact with freeform fallback preserved (SKILL-05)
-- [ ] 06-03-PLAN.md — AGENT_GUIDE.md disambiguation + CONTEXT.md tools/libraries extension + lib/env_loader.py env var docs + requirements.txt audit (SKILL-06, INT-01, INT-02, INT-03)
+- [x] 06-02-PLAN.md — Refactor skills/meta/video-reference-analyst.md to consume structured video_analysis artifact with freeform fallback preserved (SKILL-05)
+- [x] 06-03-PLAN.md — AGENT_GUIDE.md disambiguation + CONTEXT.md tools/libraries extension + lib/env_loader.py env var docs + requirements.txt audit (SKILL-06, INT-01, INT-02, INT-03)
 **UI hint**: no
 
 ### Phase 7: Tests
@@ -144,5 +144,5 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | 3. OpenRouter Provider | 3/3 | Complete    | 2026-04-17 |
 | 4. Chunking | 3/3 | Complete    | 2026-04-17 |
 | 5. Synthesizer + Staging | 3/3 | Complete    | 2026-04-17 |
-| 6. Skills + Integration | 0/3 | Not started | - |
+| 6. Skills + Integration | 3/3 | Complete    | 2026-04-17 |
 | 7. Tests | 0/? | Not started | - |

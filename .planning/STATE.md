@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-04-17T21:41:21.247Z"
-last_activity: 2026-04-17 -- Phase 5 planning complete
+status: verifying
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-04-17T21:52:18.492Z"
+last_activity: 2026-04-17 -- Completed 05-03-PLAN.md
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 5
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-17 -- Phase 5 planning complete
+Plan: 3 of 3 (all complete)
+Status: Phase complete — ready for verification
+Last activity: 2026-04-17 -- Completed 05-03-PLAN.md
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-chunking P03 | 7m | 2 tasks | 4 files |
 | Phase 05-synthesizer P01 | 7min | 3 tasks | 15 files |
 | Phase 05 P02 | 7min 25sec | 2 tasks | 6 files |
+| Phase 05-synthesizer P03 | 7m 2s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,11 @@ Recent decisions affecting current work:
 - [Phase 05-synthesizer]: 05-02: validator returns list[str], raise_if_invalid is opt-in; synthesizer does not short-circuit on invalid
 - [Phase 05-synthesizer]: 05-02: emit-then-validate pattern — jsonschema.validate run record BEFORE return to catch producer drift
 - [Phase 05-synthesizer]: 05-02: cinematic.yaml web_search desync (tool not in registry) is pre-existing; deferred to future audit plan
+- [Phase 05-synthesizer]: 05-03: LLM fill advisory-never-raises; 6-step fallback (env/key/SDK/JSON×2/post-merge-validation/happy)
+- [Phase 05-synthesizer]: 05-03: response_format=json_object + in-prompt schema (not json_schema) — broader OpenRouter passthrough per Phase 3 Pitfall 4
+- [Phase 05-synthesizer]: 05-03: _merge_stage_details drops stages absent from base (SYNTH-03 hard rule: LLM cannot invent structure)
+- [Phase 05-synthesizer]: 05-03: accept_synthesis returns (Path, record) tuple; reject_synthesis encodes user rejection as validation_status=invalid (Pitfall 2 — schema has no 'rejected')
+- [Phase 05-synthesizer]: 05-03: order-aware SYNTH-10 regex (synthes\w*accept forbidden; accept_synthesis permitted) replaces 05-02 unordered substring check
 
 ### Pending Todos
 
@@ -110,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T21:41:07.472Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-04-17T21:52:18.486Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None

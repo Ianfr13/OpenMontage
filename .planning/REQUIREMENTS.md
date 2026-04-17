@@ -50,14 +50,14 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 
 - [x] **SYNTH-01**: `lib/pipeline_synthesizer.py` (NOT a `BaseTool`, mirrors `lib/playbook_generator.py`) consumes a `video_analysis` artifact and emits pipeline YAML
 - [x] **SYNTH-02**: Synthesizer uses rule-based matching (not LLM) for base pipeline selection: maps `pacing_style` + `shot_type_distribution` + `motion_type_distribution` to one of the 12 existing pipelines with a `match_score` between 0-1
-- [ ] **SYNTH-03**: Synthesizer uses an LLM (provider-agnostic, same selector or a lighter model like `gemini-2.5-flash`) only to fill stage-level details inside the matched base pipeline template — never to invent stage structure
+- [x] **SYNTH-03**: Synthesizer uses an LLM (provider-agnostic, same selector or a lighter model like `gemini-2.5-flash`) only to fill stage-level details inside the matched base pipeline template — never to invent stage structure
 - [x] **SYNTH-04**: Synthesizer supports `mode="template"` (default, generalizable) and `mode="replica"` (closer reproduction of exact reference)
 - [x] **SYNTH-05**: Synthesizer writes output ONLY to `pipeline_defs/_staging/<slug>.yaml` using `ruamel.yaml>=0.18` (YAML 1.2, comment-preserving); never writes directly to `pipeline_defs/`
 - [x] **SYNTH-06**: Slug generation includes a short content hash to prevent collisions and idempotency breaks on re-runs with same source video
 - [x] **SYNTH-07**: `lib/pipeline_loader.py:list_pipelines()` excludes any path under `pipeline_defs/_staging/` from its glob
 - [x] **SYNTH-08**: Synthesized YAML validates against `schemas/pipelines/pipeline_manifest.schema.json` AND passes semantic validation: every referenced `skills/pipelines/<x>/<y>-director.md` file exists; every referenced tool is registered
 - [x] **SYNTH-09**: `schemas/artifacts/pipeline_synthesis.schema.json` captures synthesis run record: `base_pipeline`, `match_score`, `mode`, `staging_path`, `diff_against_base`, `validation_status`, `source_analysis_checksum`, `provider_used`
-- [ ] **SYNTH-10**: Agent can accept synthesized pipeline (move `_staging/<slug>.yaml` → `pipeline_defs/<slug>.yaml`) or reject (delete from `_staging/`) via explicit API calls; no auto-approval path exists
+- [x] **SYNTH-10**: Agent can accept synthesized pipeline (move `_staging/<slug>.yaml` → `pipeline_defs/<slug>.yaml`) or reject (delete from `_staging/`) via explicit API calls; no auto-approval path exists
 
 ### Skills — Layer 2 + Layer 3
 
@@ -155,14 +155,14 @@ Deferred — tracked but not in current roadmap.
 | CHUNK-06 | Phase 4 | Complete |
 | SYNTH-01 | Phase 5 | Complete |
 | SYNTH-02 | Phase 5 | Complete |
-| SYNTH-03 | Phase 5 | Pending |
+| SYNTH-03 | Phase 5 | Complete |
 | SYNTH-04 | Phase 5 | Complete |
 | SYNTH-05 | Phase 5 | Complete |
 | SYNTH-06 | Phase 5 | Complete |
 | SYNTH-07 | Phase 5 | Complete |
 | SYNTH-08 | Phase 5 | Complete |
 | SYNTH-09 | Phase 1 | Complete |
-| SYNTH-10 | Phase 5 | Pending |
+| SYNTH-10 | Phase 5 | Complete |
 | SKILL-01 | Phase 2 | Pending |
 | SKILL-02 | Phase 3 | Pending |
 | SKILL-03 | Phase 2 | Pending |

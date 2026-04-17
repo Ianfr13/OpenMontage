@@ -16,14 +16,12 @@ import jsonschema
 
 from schemas.artifacts import ARTIFACT_NAMES, validate_artifact
 
-# All known stages across all pipelines (used only for artifact name lookup).
-ALL_KNOWN_STAGES = frozenset([
-    "research", "proposal", "idea", "script", "scene_plan",
-    "assets", "edit", "compose", "publish",
-])
-
 # Backward-compatible alias — existing code / tests that import STAGES still work.
 # New code should use get_pipeline_stages(pipeline_type) instead.
+# This list is the canonical research→publish pipeline order; capability-only
+# stages such as `video_analysis` / `pipeline_synthesis` are intentionally NOT
+# here (per Phase 1 RESEARCH Finding 8) — pipeline-manifest integration is
+# Phase 6 territory.
 STAGES = ["research", "proposal", "idea", "script", "scene_plan",
           "assets", "edit", "compose", "publish"]
 
@@ -40,6 +38,12 @@ CANONICAL_STAGE_ARTIFACTS = {
     "video_analysis": "video_analysis",
     "pipeline_synthesis": "pipeline_synthesis",
 }
+
+# All known stages — derived from CANONICAL_STAGE_ARTIFACTS so the two
+# registries cannot drift. Used as the `pipeline_type is None` fallback in
+# validate_checkpoint / write_checkpoint. Any stage registered as canonical
+# (i.e. with a required artifact) is recognised here automatically.
+ALL_KNOWN_STAGES = frozenset(CANONICAL_STAGE_ARTIFACTS.keys())
 
 # Additional artifacts that may be produced alongside canonical ones.
 # These are not stage-defining but are required by governance contracts.

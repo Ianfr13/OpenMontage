@@ -680,22 +680,22 @@ def test_max_tokens_triggers_compact_retry(monkeypatch, tmp_path):
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `.agents/skills/gemini-video-analysis/` live as `SKILL.md` only, or `SKILL.md + reference.md`?**
    - What we know: `.agents/skills/elevenlabs/` has `SKILL.md + reference.md` (long API tables in the reference file). Other skills (e.g., `ai-video-gen`) are `SKILL.md`-only.
    - What's unclear: no hard convention.
-   - Recommendation: ship `SKILL.md` only in Phase 2. Add `reference.md` only if SKILL.md exceeds ~400 lines. SKILL-01 wording ("documents Gemini-specific prompting per dimension") fits cleanly in one file.
+   - RESOLVED: ship `SKILL.md` only in Phase 2. Add `reference.md` only if SKILL.md exceeds ~400 lines. SKILL-01 wording ("documents Gemini-specific prompting per dimension") fits cleanly in one file. Adopted by Plan 02-03.
 
 2. **Does the selector need to handle `task_context` + `rank` operation like `video_selector` does?**
    - What we know: `video_selector.py` supports `operation="rank"` for scored rankings (lines 144-153). `tts_selector.py` has the same pattern.
    - What's unclear: there's no requirement (ANLZ-01 doesn't mention ranking) and only one provider exists in Phase 2.
-   - Recommendation: DO NOT add `rank` mode in Phase 2. If Phase 3 adds a real cost/quality tradeoff, reconsider then.
+   - RESOLVED: DO NOT add `rank` mode in Phase 2. If Phase 3 adds a real cost/quality tradeoff, reconsider then. Adopted by Plan 02-01.
 
 3. **Should `model` in the ToolResult reflect the provider's model (`gemini-3.1-pro-preview`) or the tool name (`gemini_video_analyzer`)?**
    - What we know: `ToolResult.model` is typed as `Optional[str]` (base_tool.py:129); existing tools put provider model strings there.
    - What's unclear: when fallback fires, do we put the requested model or the fallback model?
-   - Recommendation: put the MODEL THAT ACTUALLY RAN (fallback model on fallback). Add a sibling `data["model_requested"]` for observability.
+   - RESOLVED: put the MODEL THAT ACTUALLY RAN (fallback model on fallback). Add a sibling `data["model_requested"]` for observability. Adopted by Plan 02-02 + test 13.
 
 ---
 

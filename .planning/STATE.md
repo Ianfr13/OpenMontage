@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: Completed 01-02-PLAN.md (pipeline_synthesis schema + contract tests)
-last_updated: "2026-04-17T15:32:18.132Z"
+stopped_at: Completed 01-03-PLAN.md (lib/schema_adapter.py + 16 unit tests)
+last_updated: "2026-04-17T15:39:13.271Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 01 (schema-adapter) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01 P01 | 3min | 2 tasks | 3 files |
 | Phase 01 P02 | 8min | 2 tasks | 2 files |
+| Phase 01 P03 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 01]: video_analysis schema version const = 2.0 (aligns with milestone v2.0); v1.0 brief keeps const 1.0
 - [Phase 01]: pipeline_synthesis schema version const = 1.0 (first canonical shape of synthesis record)
 - [Phase 01]: validation_status enum starts as [valid, invalid, pending]; Phase 5 may extend
+- [Phase 01-03]: Hand-rolled ~30-line `$ref` inliner (not jsonref / not jsonschema.RefResolver) — zero new deps, plain-dict contract, avoids deprecated RefResolver API
+- [Phase 01-03]: Conservative `$ref`-with-siblings handling — drop `$ref` keyword, preserve siblings (Draft 2020-12 allows siblings; keeping `$ref` would leak to provider API)
+- [Phase 01-03]: `SchemaAdapterError(ValueError)` subclass raised on unresolvable/external refs — matches `lib/checkpoint.py:CheckpointValidationError` convention
 
 ### Pending Todos
 
@@ -84,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T15:32:07.857Z
-Stopped at: Completed 01-02-PLAN.md (pipeline_synthesis schema + contract tests)
+Last session: 2026-04-17T15:39:13.266Z
+Stopped at: Completed 01-03-PLAN.md (lib/schema_adapter.py + 16 unit tests)
 Resume file: None

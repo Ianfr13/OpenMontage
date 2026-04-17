@@ -73,7 +73,7 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 - [ ] **INT-01**: `CONTEXT.md` tools table is updated with new `tools/analysis` rows for `video_analyzer_selector`, `gemini_video_analyzer`, `openrouter_video_analyzer`
 - [ ] **INT-02**: `requirements.txt` (or equivalent) adds `google-genai>=1.73`, `openai>=1.0`, `ruamel.yaml>=0.18`; no conflicting deps
 - [ ] **INT-03**: `lib/env_loader.py` and docs document all four relevant env vars: `GEMINI_API_KEY` / `GOOGLE_API_KEY` (direct), `OPENROUTER_API_KEY`, `GEMINI_VIDEO_MODEL`, `OPENROUTER_MODEL`; plus `VIDEO_ANALYZER_PROVIDER` override (gemini/openrouter/auto, default auto)
-- [ ] **INT-04**: `lib/checkpoint.py:CANONICAL_STAGE_ARTIFACTS` maps the new `video_analysis` and `pipeline_synthesis` stages to their schema files
+- [x] **INT-04**: `lib/checkpoint.py:CANONICAL_STAGE_ARTIFACTS` maps the new `video_analysis` and `pipeline_synthesis` stages to their schema files
 
 ### Tests — contracts + integration + backward compat
 
@@ -172,7 +172,7 @@ Deferred — tracked but not in current roadmap.
 | INT-01 | Phase 6 | Pending |
 | INT-02 | Phase 6 | Pending |
 | INT-03 | Phase 6 | Pending |
-| INT-04 | Phase 1 | Pending |
+| INT-04 | Phase 1 | Complete |
 | TEST-01 | Phase 7 | Pending |
 | TEST-02 | Phase 7 | Pending |
 | TEST-03 | Phase 7 | Pending |

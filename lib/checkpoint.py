@@ -262,11 +262,21 @@ def write_checkpoint(
     error: Optional[str] = None,
     metadata: Optional[dict] = None,
 ) -> Path:
-    """Write a checkpoint file for a pipeline stage."""
-    valid_stages = (
-        set(get_pipeline_stages(pipeline_type)) if pipeline_type
-        else ALL_KNOWN_STAGES
-    )
+    """Write a checkpoint file for a pipeline stage.
+
+    `pipeline_type` is required (the checkpoint schema requires it, and
+    downstream readers rely on it to resolve the correct stage list). If
+    the caller genuinely does not know the pipeline type, that is a bug —
+    surface it loudly rather than persisting a placeholder like
+    `"unknown"` which would silently mismatch `ALL_KNOWN_STAGES` on read.
+    """
+    if not pipeline_type:
+        raise ValueError(
+            "write_checkpoint requires pipeline_type (cannot be None or empty). "
+            "Pass the pipeline manifest name that owns this stage."
+        )
+
+    valid_stages = set(get_pipeline_stages(pipeline_type))
     if stage not in valid_stages:
         raise ValueError(
             f"Invalid stage: {stage!r} for pipeline {pipeline_type!r}. "
@@ -276,7 +286,7 @@ def write_checkpoint(
     checkpoint = {
         "version": "1.0",
         "project_id": project_id,
-        "pipeline_type": pipeline_type or "unknown",
+        "pipeline_type": pipeline_type,
         "stage": stage,
         "status": status,
         "timestamp": datetime.now(timezone.utc).isoformat(),

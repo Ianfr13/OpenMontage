@@ -291,6 +291,7 @@ class TestCheckpoint:
         write_checkpoint(
             tmp_path, "test_project", "research", "completed",
             {"research_brief": sample_artifact("research_brief")},
+            pipeline_type="animated-explainer",
         )
         cp = read_checkpoint(tmp_path, "test_project", "research")
         assert cp is not None
@@ -306,12 +307,29 @@ class TestCheckpoint:
             "research",
             "completed",
             {"research_brief": sample_artifact("research_brief")},
+            pipeline_type="animated-explainer",
         )
         assert get_next_stage(tmp_path, "proj") == "proposal"
 
     def test_invalid_stage_rejected(self, tmp_path):
         with pytest.raises(ValueError):
-            write_checkpoint(tmp_path, "proj", "invalid_stage", "completed", {})
+            write_checkpoint(
+                tmp_path, "proj", "invalid_stage", "completed", {},
+                pipeline_type="animated-explainer",
+            )
+
+    def test_missing_pipeline_type_rejected(self, tmp_path):
+        """write_checkpoint must reject a missing/empty pipeline_type.
+
+        Previously the implementation silently persisted ``"unknown"`` which
+        mismatched ``ALL_KNOWN_STAGES`` on read; now the caller must pass
+        the owning pipeline manifest explicitly.
+        """
+        with pytest.raises(ValueError, match="pipeline_type"):
+            write_checkpoint(
+                tmp_path, "proj", "research", "completed",
+                {"research_brief": sample_artifact("research_brief")},
+            )
 
     def test_invalid_canonical_artifact_rejected(self, tmp_path):
         with pytest.raises(CheckpointValidationError):
@@ -321,11 +339,15 @@ class TestCheckpoint:
                 "research",
                 "completed",
                 {"research_brief": {"topic": "missing schema fields"}},
+                pipeline_type="animated-explainer",
             )
 
     def test_missing_canonical_artifact_rejected(self, tmp_path):
         with pytest.raises(CheckpointValidationError):
-            write_checkpoint(tmp_path, "proj", "research", "completed", {})
+            write_checkpoint(
+                tmp_path, "proj", "research", "completed", {},
+                pipeline_type="animated-explainer",
+            )
 
     def test_invalid_status_rejected(self, tmp_path):
         with pytest.raises(CheckpointValidationError):
@@ -335,6 +357,7 @@ class TestCheckpoint:
                 "research",
                 "mystery",
                 {"research_brief": sample_artifact("research_brief")},
+                pipeline_type="animated-explainer",
             )
 
     def test_supplementary_video_analysis_brief_is_validated(self, tmp_path):
@@ -347,6 +370,7 @@ class TestCheckpoint:
                 "proposal_packet": sample_artifact("proposal_packet"),
                 "video_analysis_brief": sample_artifact("video_analysis_brief"),
             },
+            pipeline_type="animated-explainer",
         )
         cp = read_checkpoint(tmp_path, "proj", "proposal")
         assert cp is not None

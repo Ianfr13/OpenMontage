@@ -8,3 +8,12 @@
   2. Remove `web_search` from the cinematic research stage and rely on the agent's built-in Web tool outside the pipeline_defs contract
   3. Rename the tools_available list convention to allow "intrinsic" agent capabilities
 - Deferred to: v2.1 or whenever the web_search reference is reconciled.
+
+## 2026-04-17 — Phase 05-03 discovery
+
+- `tests/contracts/test_phase2_contracts.py::TestCodeSnippetUnit::test_render_python` fails with `FileNotFoundError: 'fc-list'` (Phase 2 font-listing fallback). Unrelated to Phase 5 work — pre-existing devcontainer env gap (`fontconfig` binary absent).
+- Impact: one test in tests/contracts/test_phase2_contracts.py fails for environmental reasons; Phase 5 test suite fully green.
+- Remediation options (out of scope for 05-03):
+  1. Add `fontconfig` / `fc-list` to the devcontainer image.
+  2. Mock `subprocess.Popen(['fc-list', ...])` in the Phase 2 test.
+- Deferred to: whenever Phase 2 renderer tests are revisited.

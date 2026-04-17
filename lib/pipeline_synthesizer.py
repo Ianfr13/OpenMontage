@@ -40,6 +40,9 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import os
+import shutil
+from copy import deepcopy
 from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
@@ -490,9 +493,27 @@ def synthesize_pipeline(
         )
 
     base_manifest = load_pipeline(match["base_pipeline"])
-    # For Plan 05-02 template/replica are identical — both emit the base
-    # manifest verbatim. Plan 05-03 diverges them via LLM fill.
-    synthesized = base_manifest
+
+    # Plan 05-03: optional LLM fill-in. Resolution precedence:
+    #   use_llm_fill=True  → always run (even with env=false)
+    #   use_llm_fill=False → never run
+    #   use_llm_fill=None  → env-controlled (VIDEO_SYNTH_LLM_FILL != "false")
+    # The fill helper is advisory — any failure returns the base manifest
+    # unchanged, preserving synthesizer determinism.
+    if use_llm_fill is None:
+        use_llm_fill = (
+            os.environ.get("VIDEO_SYNTH_LLM_FILL", "true").lower() != "false"
+        )
+    if use_llm_fill:
+        # Local import keeps the llm_fill module optional at load time —
+        # tests that never exercise LLM fill never import openai.
+        from lib import llm_fill
+
+        synthesized = llm_fill.fill_stage_details(
+            base_manifest, analysis, mode=mode
+        )
+    else:
+        synthesized = deepcopy(base_manifest)
 
     slug = _build_slug(match["base_pipeline"], checksum)
     staging_path = _write_staging(
@@ -533,6 +554,138 @@ def synthesize_pipeline(
     # Validate-before-return: ensures any drift in the record shape surfaces
     # at the producer — downstream consumers never see a malformed record
     # (T-05-11 integrity mitigation).
+    jsonschema.validate(instance=record, schema=_load_synthesis_schema())
+    return record
+
+
+# ---------------------------------------------------------------------------
+# Accept / Reject API (SYNTH-10) — Plan 05-03
+# ---------------------------------------------------------------------------
+
+
+def _relative_staging_path(path: Path) -> str:
+    """Return the staging path relative to the repo root.
+
+    Falls back to ``str(path)`` if ``path`` is not under the repo root (e.g.,
+    tests that use tmp_path — the whole tmp tree lives outside the repo).
+    """
+    repo_root = PIPELINE_DEFS_DIR.parent
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
+
+
+def accept_synthesis(slug: str) -> tuple[Path, dict[str, Any]]:
+    """Promote a staged pipeline YAML into ``pipeline_defs/``.
+
+    SYNTH-10 contract — this is the ONLY authorized write into
+    ``pipeline_defs/``. Moves ``pipeline_defs/_staging/<slug>.yaml`` to
+    ``pipeline_defs/<slug>.yaml`` and emits a schema-validated
+    ``pipeline_synthesis`` run record.
+
+    Post-promotion the promoted YAML is re-validated (``skill:`` paths
+    exist, every ``tools_available`` entry is registered). The record's
+    ``validation_status`` reflects that check — ``"valid"`` on clean,
+    ``"invalid"`` on any residual issue (the move still happens; the
+    caller decides whether to revert based on the record).
+
+    Args:
+        slug: Filename stem under ``_staging/`` (no ``.yaml`` extension).
+
+    Returns:
+        ``(promoted_path, record)`` — ``promoted_path`` is the new path
+        under ``pipeline_defs/``; ``record`` validates against
+        ``schemas/artifacts/pipeline_synthesis.schema.json``.
+
+    Raises:
+        FileNotFoundError: staging file missing.
+        FileExistsError: a file already exists at the promoted path (the
+            call would overwrite an existing pipeline).
+    """
+    src = STAGING_DIR / f"{slug}.yaml"
+    dst = PIPELINE_DEFS_DIR / f"{slug}.yaml"
+
+    if not src.exists():
+        raise FileNotFoundError(f"Staging file not found: {src}")
+    if dst.exists():
+        # No partial state — staging file stays in place so the caller can
+        # retry with a different slug after inspecting the conflict.
+        raise FileExistsError(
+            f"Target already exists (will not overwrite): {dst}"
+        )
+
+    # Sibling directories under the same mount — os.rename works and
+    # shutil.move falls back to copy+unlink only on EXDEV (Pitfall 7).
+    shutil.move(str(src), str(dst))
+
+    # Re-validate the promoted manifest; record describes the code-verified
+    # state, NOT user sentiment (Pitfall 2 — schema enum is valid/invalid/
+    # pending).
+    issues: list[str] = []
+    try:
+        promoted_manifest = load_pipeline(slug)
+        issues = validate_synthesized_pipeline(promoted_manifest)
+    except Exception:
+        # A malformed promoted YAML should not crash the accept path —
+        # record as "invalid" so the caller can surface it.
+        issues = ["promoted manifest could not be loaded for validation"]
+
+    status = "valid" if not issues else "invalid"
+
+    record: dict[str, Any] = {
+        "version": "1.0",
+        "base_pipeline": slug,
+        "match_score": 0.0,
+        "mode": "template",
+        "staging_path": _relative_staging_path(src),
+        "diff_against_base": "",
+        "validation_status": status,
+        "source_analysis_checksum": "post-accept",
+        "provider_used": "gemini",
+        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    jsonschema.validate(instance=record, schema=_load_synthesis_schema())
+    return dst, record
+
+
+def reject_synthesis(slug: str) -> dict[str, Any]:
+    """Delete a staged pipeline YAML and emit a rejection record.
+
+    The returned record carries ``validation_status="invalid"`` — the
+    schema enum has no ``"rejected"`` value (Pitfall 2 in 05-RESEARCH.md);
+    user rejection is encoded as the invalid sentinel. The meta skill
+    layer (Phase 6) is responsible for preserving human context (reason
+    for rejection) alongside this record.
+
+    Args:
+        slug: Filename stem under ``_staging/``.
+
+    Returns:
+        Schema-validated ``pipeline_synthesis`` record.
+
+    Raises:
+        FileNotFoundError: staging file missing.
+    """
+    src = STAGING_DIR / f"{slug}.yaml"
+    if not src.exists():
+        raise FileNotFoundError(f"Staging file not found: {src}")
+
+    rel_path = _relative_staging_path(src)
+    src.unlink()
+
+    record: dict[str, Any] = {
+        "version": "1.0",
+        "base_pipeline": slug,
+        "match_score": 0.0,
+        "mode": "template",
+        "staging_path": rel_path,
+        "diff_against_base": "",
+        "validation_status": "invalid",
+        "source_analysis_checksum": "post-reject",
+        "provider_used": "gemini",
+        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
     jsonschema.validate(instance=record, schema=_load_synthesis_schema())
     return record
 

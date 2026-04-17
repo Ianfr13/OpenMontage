@@ -60,17 +60,19 @@ def get_pipeline_stages(pipeline_type: str | None) -> list[str]:
     """Return the ordered stage list for a specific pipeline.
 
     Falls back to STAGES (deterministic canonical order) when pipeline_type
-    is not provided or the manifest cannot be loaded.
+    is not provided or the pipeline manifest does not exist.
 
-    Previous versions used a set intersection here, which produced
-    nondeterministic ordering. The fallback now uses a stable list.
+    Real programming errors in the loader (AttributeError, TypeError, etc.)
+    are NOT swallowed — they propagate so callers can see the real bug
+    rather than silently degrading to a generic pipeline.
     """
     if pipeline_type is None:
-        # Deterministic canonical fallback — sorted to ensure stable ordering
+        # Canonical fallback — logged at debug level so the orchestrator's
+        # normal resume-without-pipeline path does not spam warnings.
         import logging
-        logging.getLogger(__name__).warning(
+        logging.getLogger(__name__).debug(
             "get_pipeline_stages called without pipeline_type — "
-            "using canonical fallback order. Pass pipeline_type for correctness."
+            "using canonical fallback order."
         )
         return list(STAGES)
 
@@ -78,8 +80,14 @@ def get_pipeline_stages(pipeline_type: str | None) -> list[str]:
         from lib.pipeline_loader import load_pipeline, get_stage_order
         manifest = load_pipeline(pipeline_type)
         return get_stage_order(manifest)
-    except (FileNotFoundError, Exception):
-        # Graceful fallback: return all known stages in canonical order
+    except FileNotFoundError:
+        # Expected "no manifest yet" case (e.g., custom/experimental pipeline
+        # type without a YAML file). Info-level — noteworthy but not a bug.
+        import logging
+        logging.getLogger(__name__).info(
+            "No pipeline manifest for %r, using canonical fallback order.",
+            pipeline_type,
+        )
         return list(STAGES)
 
 CHECKPOINT_SCHEMA_PATH = (

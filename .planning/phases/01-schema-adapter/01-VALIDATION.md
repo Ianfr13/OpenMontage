@@ -39,11 +39,11 @@ created: 2026-04-17
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 1-01-01 | 01 | 1 | ANLZ-02 | — | N/A (no PII, local schema) | contract | `pytest tests/contracts/test_video_analysis_schema.py -x` | ❌ W0 | ⬜ pending |
-| 1-01-02 | 01 | 1 | ANLZ-03 | — | N/A | contract | `pytest tests/contracts/test_video_analysis_schema.py::test_confidence_fields -x` | ❌ W0 | ⬜ pending |
+| 1-01-02 | 01 | 1 | ANLZ-03 | — | N/A | contract | `pytest tests/contracts/test_video_analysis_schema.py::test_fixture_validates -x` | ❌ W0 | ⬜ pending |
 | 1-02-01 | 02 | 1 | SYNTH-09 | — | N/A | contract | `pytest tests/contracts/test_pipeline_synthesis_schema.py -x` | ❌ W0 | ⬜ pending |
 | 1-03-01 | 03 | 2 | INT-04 | — | N/A | unit | `pytest tests/unit/test_schema_adapter.py -x` | ❌ W0 | ⬜ pending |
 | 1-04-01 | 04 | 3 | INT-04 | — | N/A | integration | `pytest tests/contracts/test_checkpoint_registration.py -x` | ❌ W0 | ⬜ pending |
-| 1-04-02 | 04 | 3 | ANLZ-02 | — | N/A (regression) | regression | `pytest tests/contracts/test_brief_schema_regression.py -x` | ✅ existing | ⬜ pending |
+| 1-04-02 | 04 | 3 | ANLZ-02 | — | N/A (regression) | regression | `pytest tests/contracts/test_brief_schema_regression.py -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -55,7 +55,8 @@ created: 2026-04-17
 - [ ] `tests/contracts/test_pipeline_synthesis_schema.py` — stubs for SYNTH-09
 - [ ] `tests/unit/test_schema_adapter.py` — stubs for INT-04
 - [ ] `tests/contracts/test_checkpoint_registration.py` — stubs for INT-04
-- [ ] `tests/fixtures/video_analysis_fixture.json` — hand-crafted fixture covering all 4 dimension keys
+- [ ] `tests/contracts/test_brief_schema_regression.py` — regression stub for ANLZ-02 (v1.0 brief schema still loads)
+- [ ] Inline Python dict fixtures inside each contract-test module (no `tests/fixtures/` directory is created — see RESEARCH.md Finding 5)
 - [ ] Confirm pytest is the project test runner; if missing, add to `requirements.txt` / `pyproject.toml`
 
 *Framework install: pytest + jsonschema (4.26.0 already pinned per research); no new deps.*

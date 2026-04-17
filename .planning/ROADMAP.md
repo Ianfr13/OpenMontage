@@ -35,7 +35,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `lib/schema_adapter.py` converts the canonical schema to a flat dict that contains no `$ref`, no `additionalProperties`, no `uniqueItems`; unit tests pass with no API key
   3. `lib/checkpoint.py` `CANONICAL_STAGE_ARTIFACTS` maps both `video_analysis` and `pipeline_synthesis` to their schema files; `validate_artifact("video_analysis", fixture)` does not raise
   4. `schemas/artifacts/pipeline_synthesis.schema.json` exists and is valid JSON Schema; the v1.0 `video_analysis_brief.schema.json` still loads (no regression)
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 01-01-PLAN.md — Canonical video_analysis.schema.json + contract tests (ANLZ-02, ANLZ-03)
+- [ ] 01-02-PLAN.md — pipeline_synthesis.schema.json + contract tests (SYNTH-09)
+- [ ] 01-03-PLAN.md — lib/schema_adapter.py + unit tests (ANLZ-03, INT-04)
+- [ ] 01-04-PLAN.md — Checkpoint + ARTIFACT_NAMES registration + v1.0 regression guard (INT-04, ANLZ-02)
 **UI hint**: no
 
 ### Phase 2: Gemini Provider

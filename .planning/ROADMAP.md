@@ -97,7 +97,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every `skill:` path in the synthesized YAML exists on the filesystem; every tool in `tools_available` appears in the registry; semantic validation rejects the YAML before it reaches the approval checkpoint if either check fails
   4. Slug includes a short content hash; a second synthesis run on the same video produces the same slug (idempotent) and does not silently overwrite an existing staging file
   5. Agent can accept (move `_staging/<slug>.yaml` → `pipeline_defs/<slug>.yaml`) or reject (delete from `_staging/`) via explicit calls; no auto-approval path exists
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 05-01-PLAN.md — lib/pipeline_synthesizer.py core (matcher + slug + staging writer) + ruamel.yaml dep + manifest schema extension + expected_analysis annotations for all 12 pipelines (SYNTH-01, SYNTH-02, SYNTH-04, SYNTH-05, SYNTH-06)
+- [ ] 05-02-PLAN.md — Semantic validation (validate_synthesized_pipeline) + loader underscore filter + run record emission (schema-valid) (SYNTH-07, SYNTH-08)
+- [ ] 05-03-PLAN.md — Accept/reject API + lib/llm_fill.py (OpenRouter text-only, bounded, fallback-on-failure) + end-to-end contract test (SYNTH-03, SYNTH-10)
 **UI hint**: no
 
 ### Phase 6: Skills + Integration
@@ -137,6 +140,6 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | 2. Gemini Provider | 4/4 | Complete    | 2026-04-17 |
 | 3. OpenRouter Provider | 3/3 | Complete    | 2026-04-17 |
 | 4. Chunking | 3/3 | Complete    | 2026-04-17 |
-| 5. Synthesizer + Staging | 0/? | Not started | - |
+| 5. Synthesizer + Staging | 0/3 | Not started | - |
 | 6. Skills + Integration | 0/? | Not started | - |
 | 7. Tests | 0/? | Not started | - |

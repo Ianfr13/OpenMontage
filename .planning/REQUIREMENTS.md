@@ -130,25 +130,25 @@ Deferred — tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ANLZ-01 | Phase 2 | Pending |
+| ANLZ-01 | Phase 2 | Complete |
 | ANLZ-02 | Phase 1 | Complete |
 | ANLZ-03 | Phase 1 | Complete |
-| ANLZ-04 | Phase 2 | Pending |
-| ANLZ-05 | Phase 2 | Pending |
-| ANLZ-06 | Phase 3 | Pending |
-| GEM-01 | Phase 2 | Pending |
-| GEM-02 | Phase 2 | Pending |
-| GEM-03 | Phase 2 | Pending |
-| GEM-04 | Phase 2 | Pending |
-| GEM-05 | Phase 2 | Pending |
-| OR-01 | Phase 3 | Pending |
-| OR-02 | Phase 3 | Pending |
-| OR-03 | Phase 3 | Pending |
-| OR-04 | Phase 3 | Pending |
-| OR-05 | Phase 3 | Pending |
-| OR-06 | Phase 3 | Pending |
-| CHUNK-01 | Phase 4 | Pending |
-| CHUNK-02 | Phase 4 | Pending |
+| ANLZ-04 | Phase 2 | Complete |
+| ANLZ-05 | Phase 2 | Complete |
+| ANLZ-06 | Phase 3 | Complete |
+| GEM-01 | Phase 2 | Complete |
+| GEM-02 | Phase 2 | Complete |
+| GEM-03 | Phase 2 | Complete |
+| GEM-04 | Phase 2 | Complete |
+| GEM-05 | Phase 2 | Complete |
+| OR-01 | Phase 3 | Complete |
+| OR-02 | Phase 3 | Complete |
+| OR-03 | Phase 3 | Complete |
+| OR-04 | Phase 3 | Complete |
+| OR-05 | Phase 3 | Complete |
+| OR-06 | Phase 3 | Complete |
+| CHUNK-01 | Phase 4 | Complete |
+| CHUNK-02 | Phase 4 | Complete |
 | CHUNK-03 | Phase 4 | Complete |
 | CHUNK-04 | Phase 4 | Complete |
 | CHUNK-05 | Phase 4 | Complete |
@@ -163,11 +163,11 @@ Deferred — tracked but not in current roadmap.
 | SYNTH-08 | Phase 5 | Complete |
 | SYNTH-09 | Phase 1 | Complete |
 | SYNTH-10 | Phase 5 | Complete |
-| SKILL-01 | Phase 2 | Pending |
-| SKILL-02 | Phase 3 | Pending |
-| SKILL-03 | Phase 2 | Pending |
+| SKILL-01 | Phase 2 | Complete |
+| SKILL-02 | Phase 3 | Complete |
+| SKILL-03 | Phase 2 | Partial (human-UAT) |
 | SKILL-04 | Phase 6 | Complete |
-| SKILL-05 | Phase 6 | Pending |
+| SKILL-05 | Phase 6 | Complete |
 | SKILL-06 | Phase 6 | Complete |
 | INT-01 | Phase 6 | Complete |
 | INT-02 | Phase 6 | Complete |

@@ -66,13 +66,13 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 - [ ] **SKILL-03**: Both providers' Layer 3 skills are Phase exit gates: field-level quality review on one real video required before closing the provider's phase
 - [x] **SKILL-04**: `skills/meta/reference-synthesis.md` orchestrates the flow: receive video → select provider via selector → analyze (chunked if needed) → synthesize → present diff for approval; invokes `lib/checkpoint.py` directly with 2 `awaiting_human` gates (analysis review, synthesis diff approval)
 - [ ] **SKILL-05**: `skills/meta/video-reference-analyst.md` is refactored to consume the structured `video_analysis` artifact; preserves freeform fallback for backward compat
-- [ ] **SKILL-06**: `AGENT_GUIDE.md` "Reference Video Entry Point" section is updated with disambiguation rule (user wants pipeline synthesis → `reference-synthesis.md`; concepts only → current `video-reference-analyst.md` flow) plus provider selection guidance
+- [x] **SKILL-06**: `AGENT_GUIDE.md` "Reference Video Entry Point" section is updated with disambiguation rule (user wants pipeline synthesis → `reference-synthesis.md`; concepts only → current `video-reference-analyst.md` flow) plus provider selection guidance
 
 ### Integration — docs + env + backward compat
 
-- [ ] **INT-01**: `CONTEXT.md` tools table is updated with new `tools/analysis` rows for `video_analyzer_selector`, `gemini_video_analyzer`, `openrouter_video_analyzer`
-- [ ] **INT-02**: `requirements.txt` (or equivalent) adds `google-genai>=1.73`, `openai>=1.0`, `ruamel.yaml>=0.18`; no conflicting deps
-- [ ] **INT-03**: `lib/env_loader.py` and docs document all four relevant env vars: `GEMINI_API_KEY` / `GOOGLE_API_KEY` (direct), `OPENROUTER_API_KEY`, `GEMINI_VIDEO_MODEL`, `OPENROUTER_MODEL`; plus `VIDEO_ANALYZER_PROVIDER` override (gemini/openrouter/auto, default auto)
+- [x] **INT-01**: `CONTEXT.md` tools table is updated with new `tools/analysis` rows for `video_analyzer_selector`, `gemini_video_analyzer`, `openrouter_video_analyzer`
+- [x] **INT-02**: `requirements.txt` (or equivalent) adds `google-genai>=1.73`, `openai>=1.0`, `ruamel.yaml>=0.18`; no conflicting deps
+- [x] **INT-03**: `lib/env_loader.py` and docs document all four relevant env vars: `GEMINI_API_KEY` / `GOOGLE_API_KEY` (direct), `OPENROUTER_API_KEY`, `GEMINI_VIDEO_MODEL`, `OPENROUTER_MODEL`; plus `VIDEO_ANALYZER_PROVIDER` override (gemini/openrouter/auto, default auto)
 - [x] **INT-04**: `lib/checkpoint.py:CANONICAL_STAGE_ARTIFACTS` maps the new `video_analysis` and `pipeline_synthesis` stages to their schema files
 
 ### Tests — contracts + integration + backward compat
@@ -168,10 +168,10 @@ Deferred — tracked but not in current roadmap.
 | SKILL-03 | Phase 2 | Pending |
 | SKILL-04 | Phase 6 | Complete |
 | SKILL-05 | Phase 6 | Pending |
-| SKILL-06 | Phase 6 | Pending |
-| INT-01 | Phase 6 | Pending |
-| INT-02 | Phase 6 | Pending |
-| INT-03 | Phase 6 | Pending |
+| SKILL-06 | Phase 6 | Complete |
+| INT-01 | Phase 6 | Complete |
+| INT-02 | Phase 6 | Complete |
+| INT-03 | Phase 6 | Complete |
 | INT-04 | Phase 1 | Complete |
 | TEST-01 | Phase 7 | Pending |
 | TEST-02 | Phase 7 | Pending |

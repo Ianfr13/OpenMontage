@@ -84,3 +84,6 @@ remotion-composer/public/demo-props/caption-burn-*
 
 # project-architect workflow state (local)
 .specs/workflow-state.json
+
+# Integration test fixtures (10-100MB video clips — user-provisioned, not part of repo)
+tests/integration/fixtures/

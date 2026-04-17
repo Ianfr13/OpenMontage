@@ -104,9 +104,11 @@ selector enforces preference order, env overrides, and Layer-3 skill wiring.
 ```python
 from tools.tool_registry import registry
 registry.discover()
-selector = registry.get_by_capability("video_analysis")[0]
-# Selector enforces: provider="selector"; raw providers are never returned first.
-assert selector.provider == "selector"
+# Find the selector explicitly — never index by [0] since discovery order
+# is alphabetical (gemini_video_analyzer, openrouter_video_analyzer, video_analyzer_selector).
+candidates = registry.get_by_capability("video_analysis")
+selector = next(t for t in candidates if t.provider == "selector")
+# Selector enforces preference order, env overrides, and Layer-3 skill wiring.
 ```
 
 **Preference order** (documented in `tools/analysis/video_analyzer_selector.py`):

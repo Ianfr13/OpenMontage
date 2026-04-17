@@ -30,9 +30,9 @@ reading ``os.environ`` directly, to centralize defaults and documentation.
 | ``VIDEO_CHUNK_WORKERS`` | ``lib/chunked_analyzer``            | ``4``                           | ThreadPoolExecutor ``max_workers`` for chunked analysis.     |
 |                         |                                     |                                 | Clamped to ``[1, 8]``; invalid value falls back with WARNING.|
 +-------------------------+-------------------------------------+---------------------------------+--------------------------------------------------------------+
-| ``VIDEO_SYNTH_LLM_FILL``| ``lib/pipeline_synthesizer`` via ``lib/llm_fill`` | ``auto``           | Toggle LLM-fill during synthesis: ``1``/``true`` to force    |
-|                         |                                     |                                 | on, ``0``/``false`` to disable, ``auto`` (default) enables   |
-|                         |                                     |                                 | when ``OPENROUTER_API_KEY`` is present.                      |
+| ``VIDEO_SYNTH_LLM_FILL``| ``lib/pipeline_synthesizer`` via ``lib/llm_fill`` | ``true``           | Toggle LLM-fill during synthesis: any value other than       |
+|                         |                                     |                                 | ``false`` enables it. When enabled but ``OPENROUTER_API_KEY``|
+|                         |                                     |                                 | is missing, fill_stage_details falls back to no-op.          |
 +-------------------------+-------------------------------------+---------------------------------+--------------------------------------------------------------+
 
 Pre-v2.0 env vars (TTS, image/video gen providers, etc.) are documented per-tool

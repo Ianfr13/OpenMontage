@@ -38,8 +38,7 @@ class VideoAnalyzerSelector(BaseTool):
     provider = "selector"
     stability = ToolStability.BETA
     runtime = ToolRuntime.HYBRID
-    # Grows to include "openrouter-video-analysis" when Phase 3 lands.
-    agent_skills = ["gemini-video-analysis"]
+    agent_skills = ["gemini-video-analysis", "openrouter-video-analysis"]
 
     best_for = [
         "routing between video_analysis providers",

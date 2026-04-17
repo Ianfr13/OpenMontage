@@ -189,3 +189,93 @@ def no_keys(monkeypatch):
     """
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+
+# ----------------------------------------------------------------------
+# Phase 3 additions — OpenRouter provider mocks
+# ----------------------------------------------------------------------
+
+
+def _openrouter_resp_ok(
+    artifact: dict,
+    model: str = "google/gemini-3.1-pro-preview",
+    cost: float = 0.001,
+):
+    """Build a /chat/completions response with ``finish_reason='stop'``.
+
+    ``finish_reason`` is a STRING (not enum) — Pitfall 2 guard. OpenRouter
+    adds ``cost`` as an extra field on the usage body (Pitfall 5).
+    """
+    resp = MagicMock()
+    choice = MagicMock()
+    choice.finish_reason = "stop"
+    choice.message.content = json.dumps(artifact)
+    resp.choices = [choice]
+    resp.model = model
+    usage = MagicMock()
+    usage.cost = cost
+    resp.usage = usage
+    return resp
+
+
+def _openrouter_resp_truncated(model: str = "google/gemini-3.1-pro-preview"):
+    """``finish_reason='length'`` + empty content — the truncation sentinel."""
+    resp = MagicMock()
+    choice = MagicMock()
+    choice.finish_reason = "length"
+    choice.message.content = ""
+    resp.choices = [choice]
+    resp.model = model
+    resp.usage = MagicMock(cost=0.0)
+    return resp
+
+
+def _openrouter_resp_empty_stop(model: str = "google/gemini-3.1-pro-preview"):
+    """``finish_reason='stop'`` but empty content — second retry trigger."""
+    resp = MagicMock()
+    choice = MagicMock()
+    choice.finish_reason = "stop"
+    choice.message.content = ""
+    resp.choices = [choice]
+    resp.model = model
+    resp.usage = MagicMock(cost=0.0)
+    return resp
+
+
+@pytest.fixture
+def openrouter_response_factories():
+    """Bundle of OpenRouter response builders (parallels ``response_factories``)."""
+    return {
+        "ok": _openrouter_resp_ok,
+        "truncated": _openrouter_resp_truncated,
+        "empty_stop": _openrouter_resp_empty_stop,
+    }
+
+
+@pytest.fixture
+def mock_openai(monkeypatch, valid_artifact):
+    """Stub the ``openai`` SDK surface used by ``OpenRouterVideoAnalyzer``.
+
+    Yields the MagicMock client. Tests override
+    ``.chat.completions.create.return_value`` / ``side_effect`` per scenario.
+
+    Defaults:
+      * ``chat.completions.create()`` returns ``_openrouter_resp_ok(valid_artifact)``
+        with ``finish_reason='stop'`` (STRING) and ``usage.cost=0.001``.
+
+    The autouse ``_scrub_provider_keys`` has already cleared OPENROUTER_API_KEY,
+    so we re-inject a test value here. Tests that want the unset-key path
+    should use the ``no_keys`` fixture instead.
+    """
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-or-key")
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+
+    client = MagicMock()
+    client.chat.completions.create.return_value = _openrouter_resp_ok(valid_artifact)
+
+    # Tool does ``from openai import OpenAI``; patch the name at the tool's module.
+    import tools.analysis.openrouter_video_analyzer as target
+
+    monkeypatch.setattr(target, "OpenAI", MagicMock(return_value=client))
+    return client

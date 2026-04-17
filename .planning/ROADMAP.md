@@ -98,7 +98,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Slug includes a short content hash; a second synthesis run on the same video produces the same slug (idempotent) and does not silently overwrite an existing staging file
   5. Agent can accept (move `_staging/<slug>.yaml` → `pipeline_defs/<slug>.yaml`) or reject (delete from `_staging/`) via explicit calls; no auto-approval path exists
 **Plans**: 3 plans
-- [ ] 05-01-PLAN.md — lib/pipeline_synthesizer.py core (matcher + slug + staging writer) + ruamel.yaml dep + manifest schema extension + expected_analysis annotations for all 12 pipelines (SYNTH-01, SYNTH-02, SYNTH-04, SYNTH-05, SYNTH-06)
+- [x] 05-01-PLAN.md — lib/pipeline_synthesizer.py core (matcher + slug + staging writer) + ruamel.yaml dep + manifest schema extension + expected_analysis annotations for all 12 pipelines (SYNTH-01, SYNTH-02, SYNTH-04, SYNTH-05, SYNTH-06)
 - [ ] 05-02-PLAN.md — Semantic validation (validate_synthesized_pipeline) + loader underscore filter + run record emission (schema-valid) (SYNTH-07, SYNTH-08)
 - [ ] 05-03-PLAN.md — Accept/reject API + lib/llm_fill.py (OpenRouter text-only, bounded, fallback-on-failure) + end-to-end contract test (SYNTH-03, SYNTH-10)
 **UI hint**: no

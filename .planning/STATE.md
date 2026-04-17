@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: "Completed 04-03-PLAN.md (chunked_analyzer: 38 tests, 490 lines, cost_tracker integrated)"
-last_updated: "2026-04-17T20:34:11.922Z"
-last_activity: 2026-04-17
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-17T21:05:19.799Z"
+last_activity: 2026-04-17 -- Phase 5 planning complete
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_plans: 17
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 Phase: 5
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-04-17
+Last activity: 2026-04-17 -- Phase 5 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P04 | 5min | 2 tasks | 4 files |
 | Phase 04-chunking P02 | 0h | 2 tasks | 3 files |
 | Phase 04-chunking P03 | 7m | 2 tasks | 4 files |
+| Phase 05-synthesizer P01 | 7min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Recent decisions affecting current work:
 - [Phase 04-chunking]: 04-03: cost_tracker.operation uses basename (not full path) to avoid leaking filesystem paths into cost log (STRIDE T-04-17)
 - [Phase 04-chunking]: 04-03: RESEARCH Open Question 1 resolved — cost_tracker group_id deferred to v2.1; descriptive operation string is the correlation key
 - [Phase 04-chunking]: 04-03: RESEARCH Open Question 4 resolved — single-chunk bypass cleanup delegated to cleanup_chunks sentinel guard
+- [Phase 05-synthesizer]: Actual pipeline stage counts used over the plan's estimate table (determinism)
+- [Phase 05-synthesizer]: close_up_heavy maps to shot_type_distribution.talking_head > 0.5 (schema has no close_up key)
+- [Phase 05-synthesizer]: Schema gained documentary category + optional production_modes array to unblock pre-existing pipelines
 
 ### Pending Todos
 
@@ -101,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T20:30:20.256Z
-Stopped at: Completed 04-03-PLAN.md (chunked_analyzer: 38 tests, 490 lines, cost_tracker integrated)
+Last session: 2026-04-17T21:05:12.896Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

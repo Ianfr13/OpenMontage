@@ -10,7 +10,26 @@ Para quem: criadores e equipes que precisam produzir vídeo (explainer, trailer,
 
 Um agente que lê instruções (pipeline manifest → stage director skill → Layer 3 vendor skill) e entrega um vídeo produzido end-to-end — sem que decisões criativas ou de tooling vazem para código Python.
 
-## Current Milestone: v2.0 Reference Synthesis
+## Current State
+
+**v2.0 Reference Synthesis shipped (2026-04-17)** — 7 phases · 23 plans · 588 tests · all 47 requirements satisfied (46 complete + 1 partial SKILL-03 human-UAT by design). See `.planning/milestones/v2.0-ROADMAP.md` for the archive. The reference-synthesis meta skill (`skills/meta/reference-synthesis.md`) is the live entry point for turning a reference video into a reusable pipeline.
+
+## Next Milestone Goals
+
+_TBD — start with `/gsd-new-milestone` to define requirements._
+
+Candidate themes from v2.0 deferred items:
+- v2.1 cleanup (Phase 2 code-review nits LO/NI, cinematic.yaml web_search drift, SKILL-03 real-video review with fixtures)
+- Additional providers (Claude video input when shipped, local/offline analyzer)
+- SYNTH2-* synthesizer quality improvements (LLM-scored match confidence, interactive diff UI, auto-regenerate refactor)
+- OBS-* observability (cross-chunk cost tracking, analysis cache by checksum)
+
+---
+
+<details>
+<summary>Archived: v2.0 Reference Synthesis milestone definition</summary>
+
+## Shipped Milestone: v2.0 Reference Synthesis
 
 **Goal:** Dado um vídeo de referência (arquivo local), extrair sua gramática completa — edição, áudio, estilo visual e narrativa — e sintetizar um novo pipeline persistente em `pipeline_defs/` que reproduz aquele formato.
 
@@ -128,5 +147,7 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
+</details>
+
 ---
-*Last updated: 2026-04-17 after starting milestone v2.0 Reference Synthesis*
+*Last updated: 2026-04-17 after shipping milestone v2.0 Reference Synthesis*

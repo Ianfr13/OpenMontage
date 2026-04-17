@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Schema + Adapter** — Canonical `video_analysis` schema, `schema_adapter`, and checkpoint registration; the contract every downstream component depends on
 - [x] **Phase 2: Gemini Provider** — `gemini_video_analyzer` + `video_analyzer_selector` + Layer 3 Gemini skill; first end-to-end analysis path with selector routing from day one (completed 2026-04-17)
-- [ ] **Phase 3: OpenRouter Provider** — `openrouter_video_analyzer` slots into the existing selector; both providers produce artifacts passing the same canonical schema
+- [x] **Phase 3: OpenRouter Provider** — `openrouter_video_analyzer` slots into the existing selector; both providers produce artifacts passing the same canonical schema (completed 2026-04-17)
 - [ ] **Phase 4: Chunking** — `lib/video_chunker.py` + `lib/analysis_merger.py`; videos >5 min analyzed in bounded-concurrency chunks with merged canonical output
 - [ ] **Phase 5: Synthesizer + Staging** — `lib/pipeline_synthesizer.py` with rule-based matching, staging path, semantic validation, and human-approval gating
 - [ ] **Phase 6: Skills + Integration** — `reference-synthesis.md` meta skill, refactored `video-reference-analyst.md`, `AGENT_GUIDE.md` disambiguation, `CONTEXT.md` and `requirements.txt` updates
@@ -66,9 +66,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Artifacts from both providers pass `jsonschema.validate()` against the same `video_analysis.schema.json`; the selector caller cannot tell which provider was used from the artifact shape (ANLZ-06)
   5. `.agents/skills/openrouter-video-analysis/SKILL.md` exists and is referenced in the tool's `agent_skills`; field-level quality review on one real video completes before phase close (SKILL-03 gate)
 **Plans**: 3 plans
-- [ ] 03-01-PLAN.md — tools/analysis/openrouter_video_analyzer.py + requirements.txt openai pin (OR-01..05, ANLZ-06 tool-side)
-- [ ] 03-02-PLAN.md — .agents/skills/openrouter-video-analysis/SKILL.md + agent_skills wiring audit (OR-06, SKILL-02)
-- [ ] 03-03-PLAN.md — conftest extension + 22 unit tests + contract tests incl. cross-provider consistency (OR-01..06, ANLZ-06, SKILL-02)
+- [x] 03-01-PLAN.md — tools/analysis/openrouter_video_analyzer.py + requirements.txt openai pin (OR-01..05, ANLZ-06 tool-side)
+- [x] 03-02-PLAN.md — .agents/skills/openrouter-video-analysis/SKILL.md + agent_skills wiring audit (OR-06, SKILL-02)
+- [x] 03-03-PLAN.md — conftest extension + 22 unit tests + contract tests incl. cross-provider consistency (OR-01..06, ANLZ-06, SKILL-02)
 **UI hint**: no
 
 ### Phase 4: Chunking
@@ -132,7 +132,7 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 |-------|----------------|--------|-----------|
 | 1. Schema + Adapter | 0/? | Not started | - |
 | 2. Gemini Provider | 4/4 | Complete    | 2026-04-17 |
-| 3. OpenRouter Provider | 0/3 | Planning complete | - |
+| 3. OpenRouter Provider | 3/3 | Complete    | 2026-04-17 |
 | 4. Chunking | 0/? | Not started | - |
 | 5. Synthesizer + Staging | 0/? | Not started | - |
 | 6. Skills + Integration | 0/? | Not started | - |

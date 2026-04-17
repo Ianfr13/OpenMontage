@@ -41,8 +41,22 @@ This is a first-class workflow in OpenMontage.
 
 ### Important distinction
 
-- **Reference-driven request:** "make me something like this" -> use `video-reference-analyst.md`
+- **Reference -> concepts:** "make me something like this" -> use `skills/meta/video-reference-analyst.md`
+- **Reference -> reusable pipeline:** "synthesize a pipeline from this" -> use `skills/meta/reference-synthesis.md`
 - **Source-footage request:** "edit this footage" / "cut this into clips" -> use `source_media_review` and the appropriate footage-led pipeline
+
+### Two reference workflows
+
+OpenMontage has two distinct reference-driven workflows. Route based on user intent:
+
+| User says... | Route to | What it produces |
+|--------------|----------|-----------------|
+| "make me a video like this" / "use this as inspiration" / "something similar" / "inspired by" | `skills/meta/video-reference-analyst.md` | 2-3 differentiated concepts + full production pipeline run |
+| "synthesize a pipeline from this reference" / "save this format as reusable" / "make this video's format into a template" / "turn this reference into a pipeline" | `skills/meta/reference-synthesis.md` | Persistent `pipeline_defs/<slug>.yaml` after human approval |
+
+Hop count guarantee: An agent reading only `AGENT_GUIDE.md` reaches either skill file in exactly 1 hop via the paths above. If the user's intent is ambiguous, ASK — do not guess.
+
+Shared downstream flow: Both skills eventually converge on the same Layer 3 skill gate, sample-first production, and pipeline execution. The routing decision is only about what the initial orchestration layer does — concept generation vs. pipeline template capture.
 
 If a model misses this distinction, it will often fall back to plain search + guesswork. That is incorrect for OpenMontage.
 

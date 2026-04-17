@@ -8,6 +8,12 @@ category: custom
 stability: beta
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: steady_educational
+  close_up_heavy: false
+  static_heavy: false
+  expected_stage_count: 7
+
 orchestration:
   mode: executive-producer
   skill: pipelines/localization-dub/executive-producer

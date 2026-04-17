@@ -10,6 +10,12 @@ category: custom
 stability: beta
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: dynamic_social
+  close_up_heavy: true
+  static_heavy: false
+  expected_stage_count: 7
+
 orchestration:
   mode: executive-producer
   skill: pipelines/podcast-repurpose/executive-producer

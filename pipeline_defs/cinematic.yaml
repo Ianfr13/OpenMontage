@@ -9,6 +9,12 @@ category: cinematic
 stability: production
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: slow_contemplative
+  close_up_heavy: false
+  static_heavy: false
+  expected_stage_count: 8
+
 # Reference video input support
 reference_input:
   supported: true

@@ -19,6 +19,12 @@ category: screen_recording
 stability: production
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: steady_educational
+  close_up_heavy: false
+  static_heavy: true
+  expected_stage_count: 9
+
 # Production modes this pipeline supports
 production_modes:
   - name: real_capture

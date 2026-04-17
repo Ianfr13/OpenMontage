@@ -9,6 +9,12 @@ category: custom
 stability: beta
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: rapid_fire
+  close_up_heavy: false
+  static_heavy: false
+  expected_stage_count: 7
+
 orchestration:
   mode: executive-producer
   skill: pipelines/clip-factory/executive-producer

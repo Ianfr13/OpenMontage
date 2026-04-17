@@ -9,6 +9,12 @@ category: custom
 stability: production
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: steady_educational
+  close_up_heavy: true
+  static_heavy: false
+  expected_stage_count: 7
+
 orchestration:
   mode: executive-producer
   skill: pipelines/avatar-spokesperson/executive-producer

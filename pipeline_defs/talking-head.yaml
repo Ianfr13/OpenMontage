@@ -8,6 +8,12 @@ category: talking_head
 stability: beta
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: steady_educational
+  close_up_heavy: true
+  static_heavy: false
+  expected_stage_count: 7
+
 extensions:
   custom_scripts: true
   custom_playbooks: true

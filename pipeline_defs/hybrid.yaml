@@ -9,6 +9,12 @@ category: hybrid
 stability: production
 default_checkpoint_policy: guided
 
+expected_analysis:
+  pacing_style: variable
+  close_up_heavy: false
+  static_heavy: false
+  expected_stage_count: 7
+
 orchestration:
   mode: executive-producer
   skill: pipelines/hybrid/executive-producer

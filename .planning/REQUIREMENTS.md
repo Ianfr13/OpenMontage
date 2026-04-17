@@ -128,64 +128,62 @@ Deferred — tracked but not in current roadmap.
 
 ## Traceability
 
-To be populated by `gsd-roadmapper` during roadmap creation. Each REQ-ID maps to exactly one phase.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ANLZ-01 | — | Pending |
-| ANLZ-02 | — | Pending |
-| ANLZ-03 | — | Pending |
-| ANLZ-04 | — | Pending |
-| ANLZ-05 | — | Pending |
-| ANLZ-06 | — | Pending |
-| GEM-01 | — | Pending |
-| GEM-02 | — | Pending |
-| GEM-03 | — | Pending |
-| GEM-04 | — | Pending |
-| GEM-05 | — | Pending |
-| OR-01 | — | Pending |
-| OR-02 | — | Pending |
-| OR-03 | — | Pending |
-| OR-04 | — | Pending |
-| OR-05 | — | Pending |
-| OR-06 | — | Pending |
-| CHUNK-01 | — | Pending |
-| CHUNK-02 | — | Pending |
-| CHUNK-03 | — | Pending |
-| CHUNK-04 | — | Pending |
-| CHUNK-05 | — | Pending |
-| CHUNK-06 | — | Pending |
-| SYNTH-01 | — | Pending |
-| SYNTH-02 | — | Pending |
-| SYNTH-03 | — | Pending |
-| SYNTH-04 | — | Pending |
-| SYNTH-05 | — | Pending |
-| SYNTH-06 | — | Pending |
-| SYNTH-07 | — | Pending |
-| SYNTH-08 | — | Pending |
-| SYNTH-09 | — | Pending |
-| SYNTH-10 | — | Pending |
-| SKILL-01 | — | Pending |
-| SKILL-02 | — | Pending |
-| SKILL-03 | — | Pending |
-| SKILL-04 | — | Pending |
-| SKILL-05 | — | Pending |
-| SKILL-06 | — | Pending |
-| INT-01 | — | Pending |
-| INT-02 | — | Pending |
-| INT-03 | — | Pending |
-| INT-04 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
+| ANLZ-01 | Phase 2 | Pending |
+| ANLZ-02 | Phase 1 | Pending |
+| ANLZ-03 | Phase 1 | Pending |
+| ANLZ-04 | Phase 2 | Pending |
+| ANLZ-05 | Phase 2 | Pending |
+| ANLZ-06 | Phase 3 | Pending |
+| GEM-01 | Phase 2 | Pending |
+| GEM-02 | Phase 2 | Pending |
+| GEM-03 | Phase 2 | Pending |
+| GEM-04 | Phase 2 | Pending |
+| GEM-05 | Phase 2 | Pending |
+| OR-01 | Phase 3 | Pending |
+| OR-02 | Phase 3 | Pending |
+| OR-03 | Phase 3 | Pending |
+| OR-04 | Phase 3 | Pending |
+| OR-05 | Phase 3 | Pending |
+| OR-06 | Phase 3 | Pending |
+| CHUNK-01 | Phase 4 | Pending |
+| CHUNK-02 | Phase 4 | Pending |
+| CHUNK-03 | Phase 4 | Pending |
+| CHUNK-04 | Phase 4 | Pending |
+| CHUNK-05 | Phase 4 | Pending |
+| CHUNK-06 | Phase 4 | Pending |
+| SYNTH-01 | Phase 5 | Pending |
+| SYNTH-02 | Phase 5 | Pending |
+| SYNTH-03 | Phase 5 | Pending |
+| SYNTH-04 | Phase 5 | Pending |
+| SYNTH-05 | Phase 5 | Pending |
+| SYNTH-06 | Phase 5 | Pending |
+| SYNTH-07 | Phase 5 | Pending |
+| SYNTH-08 | Phase 5 | Pending |
+| SYNTH-09 | Phase 1 | Pending |
+| SYNTH-10 | Phase 5 | Pending |
+| SKILL-01 | Phase 2 | Pending |
+| SKILL-02 | Phase 3 | Pending |
+| SKILL-03 | Phase 2 | Pending |
+| SKILL-04 | Phase 6 | Pending |
+| SKILL-05 | Phase 6 | Pending |
+| SKILL-06 | Phase 6 | Pending |
+| INT-01 | Phase 6 | Pending |
+| INT-02 | Phase 6 | Pending |
+| INT-03 | Phase 6 | Pending |
+| INT-04 | Phase 1 | Pending |
+| TEST-01 | Phase 7 | Pending |
+| TEST-02 | Phase 7 | Pending |
+| TEST-03 | Phase 7 | Pending |
+| TEST-04 | Phase 7 | Pending |
+| TEST-05 | Phase 7 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 47 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 47 ⚠️ (expected — roadmap runs next)
+- Mapped to phases: 47
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after pivot to dual-provider (Gemini SDK + OpenRouter)*
+*Last updated: 2026-04-17 — traceability filled by gsd-roadmapper*

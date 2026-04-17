@@ -422,3 +422,153 @@ def test_mode_parameter_accepted(isolated_defs):
     # Invalid mode
     with pytest.raises(ValueError):
         synthesize_pipeline(analysis, mode="other")
+
+
+# ============================================================================
+# Plan 05-02 additions — record emission, unified diff, validation_status
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# Test P2-1: diff_against_base is empty when synthesized == base (template mode)
+# ----------------------------------------------------------------------------
+
+
+def test_diff_against_base_empty_for_verbatim(isolated_defs):
+    """Template mode in Plan 05-02 still emits the base verbatim (no LLM fill),
+    so the unified diff MUST be an empty string — not noisy whitespace churn.
+    """
+    from lib.pipeline_synthesizer import synthesize_pipeline
+
+    result = synthesize_pipeline(_minimal_analysis(), mode="template")
+    assert result["diff_against_base"] == "", (
+        f"expected empty diff for verbatim template output; got:\n"
+        f"{result['diff_against_base'][:500]}"
+    )
+
+
+# ----------------------------------------------------------------------------
+# Test P2-2: diff_against_base contains unified-diff markers when non-empty
+# ----------------------------------------------------------------------------
+
+
+def test_diff_is_unified_format_when_nonempty(isolated_defs):
+    """Inject a mutation by pre-placing a modified synthesized file and
+    inspect the emitted diff via the internal helper. When output differs
+    from base, the diff MUST contain the '---' and '+++' unified-diff markers.
+    """
+    from lib.pipeline_synthesizer import _unified_diff, load_pipeline
+
+    base = load_pipeline("animated-explainer")
+    mutated = copy.deepcopy(base)
+    # Materially change a field so a diff is produced
+    mutated["description"] = "MUTATED for unified-diff test"
+    diff = _unified_diff(base, mutated, base_name="animated-explainer")
+
+    assert diff, "diff should be non-empty after mutation"
+    assert "---" in diff
+    assert "+++" in diff
+    assert "MUTATED for unified-diff test" in diff
+
+
+# ----------------------------------------------------------------------------
+# Test P2-3: validation_status == "valid" on healthy synthesis
+# ----------------------------------------------------------------------------
+
+
+def test_validation_status_valid(isolated_defs):
+    from lib.pipeline_synthesizer import synthesize_pipeline
+
+    result = synthesize_pipeline(_minimal_analysis(), mode="template")
+    assert result["validation_status"] == "valid", (
+        f"expected 'valid' for healthy synthesis, got {result['validation_status']!r}; "
+        f"(if this reports 'invalid' the underlying base pipeline references an "
+        f"unregistered tool or missing skill — see deferred-items.md)"
+    )
+
+
+# ----------------------------------------------------------------------------
+# Test P2-4: validation_status == "invalid" when base has a broken skill path
+# ----------------------------------------------------------------------------
+
+
+def test_validation_status_invalid(isolated_defs, monkeypatch):
+    """Patch one stage's skill to a nonexistent path BEFORE the synthesizer
+    runs validation; the emitted record must report validation_status=invalid.
+
+    We achieve this by replacing ``load_pipeline`` inside the synthesizer module
+    with a wrapper that breaks the manifest AFTER loading it.
+    """
+    import lib.pipeline_synthesizer as ps
+    from lib.pipeline_loader import load_pipeline as real_load
+
+    def broken_load(name, **kwargs):
+        m = copy.deepcopy(real_load(name, **kwargs))
+        # Break the first stage's skill so semantic validation fails
+        if m["stages"] and "skill" in m["stages"][0]:
+            m["stages"][0]["skill"] = "pipelines/nonexistent/does-not-exist"
+        return m
+
+    monkeypatch.setattr(ps, "load_pipeline", broken_load)
+
+    result = ps.synthesize_pipeline(_minimal_analysis(), mode="template")
+    assert result["validation_status"] == "invalid", (
+        f"expected 'invalid' when skill path is broken, got "
+        f"{result['validation_status']!r}"
+    )
+
+
+# ----------------------------------------------------------------------------
+# Test P2-5: synthesize_pipeline never emits 'pending' — reserved value
+# ----------------------------------------------------------------------------
+
+
+def test_no_pending_status_emitted(isolated_defs):
+    """Call synthesize_pipeline across several analyses; the emitted
+    ``validation_status`` must be one of {'valid', 'invalid'} — never
+    'pending'. ``pending`` is reserved for future async flows and is
+    not produced by this code path (Pitfall 2).
+    """
+    from lib.pipeline_synthesizer import synthesize_pipeline
+
+    seen: set[str] = set()
+    for duration in (30.0, 45.0, 60.0, 90.0):
+        analysis = _minimal_analysis()
+        analysis["source"]["duration_seconds"] = duration
+        analysis["narrative"]["target_duration_seconds"] = duration
+        result = synthesize_pipeline(analysis, mode="template")
+        seen.add(result["validation_status"])
+
+    assert "pending" not in seen, (
+        f"synthesize_pipeline emitted reserved 'pending' status: seen={sorted(seen)}"
+    )
+    assert seen <= {"valid", "invalid"}, (
+        f"unexpected validation_status values: {sorted(seen)}"
+    )
+
+
+# ----------------------------------------------------------------------------
+# Test P2-6: version const "1.0"
+# ----------------------------------------------------------------------------
+
+
+def test_version_const(isolated_defs):
+    from lib.pipeline_synthesizer import synthesize_pipeline
+
+    result = synthesize_pipeline(_minimal_analysis(), mode="template")
+    assert result["version"] == "1.0"
+
+
+# ----------------------------------------------------------------------------
+# Test P2-7: staging_path is under pipeline_defs/_staging/
+# ----------------------------------------------------------------------------
+
+
+def test_staging_path_under_pipeline_defs(isolated_defs):
+    from lib.pipeline_synthesizer import synthesize_pipeline
+
+    result = synthesize_pipeline(_minimal_analysis(), mode="template")
+    assert result["staging_path"].startswith("pipeline_defs/_staging/"), (
+        f"staging_path must start with 'pipeline_defs/_staging/'; "
+        f"got {result['staging_path']!r}"
+    )

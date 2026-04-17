@@ -7,6 +7,8 @@ checkpoints to resume pipelines and to present state at human checkpoints.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
@@ -175,6 +177,16 @@ def _merge_decision_log(
     Each stage may produce decisions. This function merges them into a
     single cumulative file so reviewers and the bench can inspect the
     full audit trail.
+
+    Robustness:
+      - Defensive id filter: skip existing entries missing `decision_id`
+        instead of KeyError'ing mid-write on a hand-edited / older-format log.
+      - Skip new decisions that lack a `decision_id` (cannot dedupe them
+        meaningfully; `None` collapsing to a single set entry would silently
+        drop all unkeyed new decisions except the first).
+      - Atomic write: write to a sibling temp file in the same directory,
+        then os.replace() into place so concurrent readers never observe a
+        half-written JSON document.
     """
     path = _decision_log_path(pipeline_dir, project_id)
     if path.exists():
@@ -187,14 +199,42 @@ def _merge_decision_log(
             "decisions": [],
         }
 
-    existing_ids = {d["decision_id"] for d in existing.get("decisions", [])}
+    existing_ids = {
+        d["decision_id"]
+        for d in existing.get("decisions", [])
+        if isinstance(d, dict) and "decision_id" in d
+    }
     for decision in new_log.get("decisions", []):
-        if decision.get("decision_id") not in existing_ids:
+        if not isinstance(decision, dict):
+            continue
+        decision_id = decision.get("decision_id")
+        if decision_id is None:
+            # Cannot dedupe an unkeyed decision — skip rather than silently
+            # collapse all unkeyed entries to the first one.
+            continue
+        if decision_id not in existing_ids:
             existing["decisions"].append(decision)
+            existing_ids.add(decision_id)
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(existing, f, indent=2)
+    # Atomic write: tempfile in same directory (guarantees same filesystem so
+    # os.replace is atomic), then replace. Concurrent reads never see a
+    # half-written document, and a crash mid-write leaves the prior file
+    # intact.
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".decision_log.", suffix=".json.tmp", dir=str(path.parent)
+    )
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(existing, f, indent=2)
+        os.replace(tmp_path, path)
+    except Exception:
+        # Clean up temp file on failure; do not leave orphaned tmp files.
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def write_checkpoint(

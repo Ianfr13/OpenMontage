@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-04-17T22:25:16.869Z"
-last_activity: 2026-04-17
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-04-17T22:44:54.889Z"
+last_activity: 2026-04-17 -- Phase 07 Plan 01 complete (TEST-01 + TEST-03 green)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_plans: 23
+  completed_plans: 21
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 7
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-17
+Plan: 01 complete — 07-02 and 07-03 pending
+Status: executing
+Last activity: 2026-04-17 -- Phase 07 Plan 01 complete (TEST-01 + TEST-03 green)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [██████████] 100%
 | 4 | 3 | - | - |
 | 5 | 3 | - | - |
 | 6 | 3 | - | - |
+| 7 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -67,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 05 P02 | 7min 25sec | 2 tasks | 6 files |
 | Phase 05-synthesizer P03 | 7m 2s | 2 tasks | 6 files |
 | Phase 06 P01 | 4m | 2 tasks | 1 files |
+| Phase 07 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -107,6 +109,10 @@ Recent decisions affecting current work:
 - [Phase 05-synthesizer]: 05-03: order-aware SYNTH-10 regex (synthes\w*accept forbidden; accept_synthesis permitted) replaces 05-02 unordered substring check
 - [Phase 06]: SKILL-04 reference-synthesis meta skill ships as single markdown (no SKILL/reference.md split) matching onboarding.md pattern
 - [Phase 06]: Two awaiting_human gates (analysis review + diff approval) cemented as architectural — Anti-Patterns + 4 grep-anchor points enforce against drift
+- [Phase 07-tests]: 07-01: Glob-at-collection pytest.mark.parametrize over pipeline_defs/*.yaml (not hardcoded list) — any future pipeline auto-covered by the backward-compat gate
+- [Phase 07-tests]: 07-01: Deletion-lock uses >=12 on total count + exact-set match on v1 names — allows growth, catches shrinkage
+- [Phase 07-tests]: 07-01: TEST-01 harness is env -i HOME=$HOME PATH=$PATH python3 -m pytest; fc-list/fontconfig gap in test_phase2_contracts deferred (pre-existing infra issue)
+- [Phase 07-tests]: 07-01: Glob-at-collection pytest.mark.parametrize over pipeline_defs/*.yaml guarantees future pipelines are auto-covered by the backward-compat gate
 
 ### Pending Todos
 
@@ -121,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T22:18:44.775Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-04-17T22:44:52.767Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

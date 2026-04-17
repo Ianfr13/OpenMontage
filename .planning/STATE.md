@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: Completed 01-01-PLAN.md (video_analysis canonical schema + contract tests)
-last_updated: "2026-04-17T15:28:11.309Z"
+stopped_at: Completed 01-02-PLAN.md (pipeline_synthesis schema + contract tests)
+last_updated: "2026-04-17T15:32:18.132Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 01 (schema-adapter) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 3min | 2 tasks | 3 files |
+| Phase 01 P02 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - Roadmap: Phase 4 (Chunking) depends on Phase 2 only; can run after Phase 2 independent of Phase 3
 - [Phase 01]: Confidence shape chosen: dimension-level map (additionalProperties enum low/medium/high), not per-field siblings — resolves Research Assumption A1
 - [Phase 01]: video_analysis schema version const = 2.0 (aligns with milestone v2.0); v1.0 brief keeps const 1.0
+- [Phase 01]: pipeline_synthesis schema version const = 1.0 (first canonical shape of synthesis record)
+- [Phase 01]: validation_status enum starts as [valid, invalid, pending]; Phase 5 may extend
 
 ### Pending Todos
 
@@ -81,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T15:28:11.301Z
-Stopped at: Completed 01-01-PLAN.md (video_analysis canonical schema + contract tests)
+Last session: 2026-04-17T15:32:07.857Z
+Stopped at: Completed 01-02-PLAN.md (pipeline_synthesis schema + contract tests)
 Resume file: None

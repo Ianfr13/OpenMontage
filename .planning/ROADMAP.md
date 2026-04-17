@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `schemas/artifacts/pipeline_synthesis.schema.json` exists and is valid JSON Schema; the v1.0 `video_analysis_brief.schema.json` still loads (no regression)
 **Plans**: 4 plans
 - [x] 01-01-PLAN.md — Canonical video_analysis.schema.json + contract tests (ANLZ-02, ANLZ-03)
-- [ ] 01-02-PLAN.md — pipeline_synthesis.schema.json + contract tests (SYNTH-09)
+- [x] 01-02-PLAN.md — pipeline_synthesis.schema.json + contract tests (SYNTH-09)
 - [ ] 01-03-PLAN.md — lib/schema_adapter.py + unit tests (ANLZ-03, INT-04)
 - [ ] 01-04-PLAN.md — Checkpoint + ARTIFACT_NAMES registration + v1.0 regression guard (INT-04, ANLZ-02)
 **UI hint**: no

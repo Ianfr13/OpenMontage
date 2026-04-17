@@ -26,6 +26,8 @@ ARTIFACT_NAMES = [
     "source_media_review",
     "final_review",
     "video_analysis_brief",
+    "video_analysis",
+    "pipeline_synthesis",
 ]
 
 

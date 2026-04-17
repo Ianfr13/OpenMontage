@@ -37,6 +37,8 @@ CANONICAL_STAGE_ARTIFACTS = {
     "edit": "edit_decisions",
     "compose": "render_report",
     "publish": "publish_log",
+    "video_analysis": "video_analysis",
+    "pipeline_synthesis": "pipeline_synthesis",
 }
 
 # Additional artifacts that may be produced alongside canonical ones.

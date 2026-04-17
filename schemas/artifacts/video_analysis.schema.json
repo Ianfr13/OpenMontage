@@ -1,0 +1,339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openmontage/artifacts/video_analysis",
+  "title": "video_analysis",
+  "description": "Canonical v2.0 video analysis artifact — structured grammar of a reference video across 4 dimensions: editing_pacing, audio, visual_style, narrative. Consumed by the pipeline synthesizer.",
+  "type": "object",
+  "required": ["version", "source", "editing_pacing", "audio", "visual_style", "narrative"],
+  "properties": {
+    "version": { "type": "string", "const": "2.0" },
+    "source": {
+      "type": "object",
+      "required": ["type", "duration_seconds"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["youtube", "shorts", "instagram", "tiktok", "local_file", "other_url"]
+        },
+        "url": { "type": "string" },
+        "local_path": { "type": "string" },
+        "title": { "type": "string" },
+        "duration_seconds": { "type": "number" },
+        "resolution": { "type": "string" }
+      }
+    },
+    "editing_pacing": {
+      "type": "object",
+      "required": [
+        "total_shots",
+        "cuts_per_minute",
+        "avg_shot_duration_seconds",
+        "pacing_style",
+        "shot_type_distribution",
+        "motion_type_distribution"
+      ],
+      "properties": {
+        "total_shots": { "type": "integer", "minimum": 0 },
+        "cuts_per_minute": { "type": "number", "minimum": 0 },
+        "avg_shot_duration_seconds": { "type": "number", "minimum": 0 },
+        "median_shot_duration_seconds": { "type": "number", "minimum": 0 },
+        "shortest_shot_seconds": { "type": "number", "minimum": 0 },
+        "longest_shot_seconds": { "type": "number", "minimum": 0 },
+        "pacing_style": {
+          "type": "string",
+          "enum": [
+            "slow_contemplative",
+            "steady_educational",
+            "dynamic_social",
+            "rapid_fire",
+            "variable"
+          ]
+        },
+        "shot_type_distribution": {
+          "type": "object",
+          "description": "Ratios by shot type. Should sum to ~1.0 (not enforced via JSON Schema).",
+          "properties": {
+            "talking_head": { "type": "number", "minimum": 0, "maximum": 1 },
+            "b_roll":       { "type": "number", "minimum": 0, "maximum": 1 },
+            "text_card":    { "type": "number", "minimum": 0, "maximum": 1 },
+            "animation":    { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "b_roll_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "a_roll_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "motion_type_distribution": {
+          "type": "object",
+          "properties": {
+            "motion_clip":    { "type": "number", "minimum": 0 },
+            "animated_still": { "type": "number", "minimum": 0 },
+            "static_image":   { "type": "number", "minimum": 0 }
+          }
+        },
+        "transition_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["cut", "dissolve", "fade_black", "fade_white", "wipe", "zoom_cut"]
+          }
+        },
+        "energy_arc": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["timestamp_s", "energy_level"],
+            "properties": {
+              "timestamp_s": { "type": "number", "minimum": 0 },
+              "energy_level": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "peak"]
+              }
+            }
+          }
+        },
+        "suggested_remotion_scene_types": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "confidence": {
+          "type": "object",
+          "description": "Per-field confidence map: field_name → low|medium|high",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "required": ["has_narration", "has_music", "narration_style", "voice_music_mix"],
+      "properties": {
+        "has_narration": { "type": "boolean" },
+        "narration_style": {
+          "type": "string",
+          "enum": ["voice_over", "on_screen_presenter", "dialogue_only", "none"]
+        },
+        "speaker_count": { "type": "integer", "minimum": 0 },
+        "voice_gender": {
+          "type": "string",
+          "enum": ["male", "female", "mixed", "synthetic_detected", "unknown"]
+        },
+        "voice_tone": {
+          "type": "string",
+          "enum": ["authoritative", "conversational", "energetic", "calm", "dramatic"]
+        },
+        "narration_wpm": { "type": "number", "minimum": 0 },
+        "narration_language": { "type": "string" },
+        "has_music": { "type": "boolean" },
+        "music_genre": { "type": "string" },
+        "music_tempo_bpm": { "type": ["number", "null"], "minimum": 0 },
+        "music_intensity": {
+          "type": "string",
+          "enum": ["subtle_background", "moderate", "dominant_foreground"]
+        },
+        "has_sfx": { "type": "boolean" },
+        "sfx_style": { "type": "string" },
+        "voice_music_mix": {
+          "type": "string",
+          "enum": ["narration_dominant", "music_dominant", "balanced"]
+        },
+        "suggested_tts_voice_profile": { "type": "string" },
+        "suggested_music_prompt": { "type": "string" },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "visual_style": {
+      "type": "object",
+      "required": ["color_palette", "production_quality", "aspect_ratio"],
+      "properties": {
+        "color_palette": {
+          "type": "object",
+          "properties": {
+            "primary":    { "type": "array", "items": { "type": "string" } },
+            "accent":     { "type": "array", "items": { "type": "string" } },
+            "background": { "type": "array", "items": { "type": "string" } },
+            "text":       { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "dominant_colors_hex": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "color_temperature": {
+          "type": "string",
+          "enum": ["warm", "cool", "neutral", "high_contrast"]
+        },
+        "color_grading_style": {
+          "type": "string",
+          "enum": ["flat_clean", "cinematic_grade", "desaturated", "vibrant_saturated", "dark_moody"]
+        },
+        "background_treatment": {
+          "type": "string",
+          "enum": ["solid_color", "gradient", "real_footage", "abstract_motion", "transparent_overlay"]
+        },
+        "typography_style": {
+          "type": "string",
+          "description": "Prose description — NOT a font family name"
+        },
+        "typography_weight": {
+          "type": "string",
+          "enum": ["light", "regular", "bold", "ultra_bold"]
+        },
+        "text_card_usage": {
+          "type": "string",
+          "enum": ["heavy", "moderate", "minimal", "none"]
+        },
+        "motion_style": {
+          "type": "string",
+          "enum": ["spring_physics", "linear_slides", "ease_in_out", "snap_cuts", "no_animation"]
+        },
+        "overlay_style": {
+          "type": "string",
+          "enum": ["lower_thirds", "full_frame_cards", "floating_labels", "none"]
+        },
+        "production_quality": {
+          "type": "string",
+          "enum": ["amateur", "prosumer", "professional", "broadcast"]
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": ["16:9", "9:16", "1:1", "4:3", "other"]
+        },
+        "suggested_playbook": { "type": "string" },
+        "playbook_overrides": { "type": "object" },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "narrative": {
+      "type": "object",
+      "required": [
+        "hook_type",
+        "narrative_arc",
+        "target_platform",
+        "target_duration_seconds",
+        "content_tone"
+      ],
+      "properties": {
+        "hook_type": {
+          "type": "string",
+          "enum": [
+            "question",
+            "bold_claim",
+            "visual_shock",
+            "stat_drop",
+            "story_open",
+            "problem_statement",
+            "none"
+          ]
+        },
+        "hook_duration_seconds": { "type": "number", "minimum": 0 },
+        "narrative_arc": {
+          "type": "string",
+          "enum": [
+            "linear",
+            "problem_solution",
+            "listicle",
+            "story_driven",
+            "educational_buildup",
+            "montage_no_arc"
+          ]
+        },
+        "section_count": { "type": "integer", "minimum": 0 },
+        "section_structure": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "approx_start_s", "approx_end_s"],
+            "properties": {
+              "label":          { "type": "string" },
+              "approx_start_s": { "type": "number", "minimum": 0 },
+              "approx_end_s":   { "type": "number", "minimum": 0 },
+              "summary":        { "type": "string" }
+            }
+          }
+        },
+        "cta_type": {
+          "type": "string",
+          "enum": ["subscribe", "visit_link", "purchase", "follow", "download", "none_detected"]
+        },
+        "cta_duration_seconds": { "type": "number", "minimum": 0 },
+        "target_platform": {
+          "type": "string",
+          "enum": [
+            "youtube_long",
+            "youtube_shorts",
+            "tiktok",
+            "instagram_reels",
+            "linkedin",
+            "twitter",
+            "unknown"
+          ]
+        },
+        "target_duration_seconds": { "type": "number", "minimum": 0 },
+        "information_density": {
+          "type": "string",
+          "enum": ["sparse", "moderate", "dense"]
+        },
+        "content_tone": {
+          "type": "string",
+          "enum": [
+            "educational",
+            "entertaining",
+            "cinematic",
+            "corporate",
+            "casual",
+            "dramatic",
+            "inspirational",
+            "humorous"
+          ]
+        },
+        "paragraph_pattern": { "type": "string" },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "chunking_metadata": {
+      "type": "object",
+      "properties": {
+        "chunk_count":      { "type": "integer", "minimum": 1 },
+        "total_duration_s": { "type": "number", "minimum": 0 },
+        "provider":         { "type": "string", "enum": ["gemini", "openrouter"] },
+        "per_chunk": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index":    { "type": "integer", "minimum": 0 },
+              "start_s":  { "type": "number", "minimum": 0 },
+              "end_s":    { "type": "number", "minimum": 0 },
+              "cost_usd": { "type": "number", "minimum": 0 },
+              "provider": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "shot_boundary_source": {
+      "type": "string",
+      "enum": ["scene_detect", "model", "hybrid"],
+      "description": "Origin of shot boundaries — per ANLZ-05"
+    }
+  }
+}

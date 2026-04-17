@@ -128,7 +128,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. All 12 existing v1.0 `pipeline_defs/*.yaml` load via `pipeline_loader` and pass their contract tests with no modification (backward compat gate)
   4. E2E smoke test: given a fixture video, the `reference-synthesis.md` flow produces a valid `pipeline_defs/<slug>.yaml` that passes schema + semantic validation for each provider (auto-approve via test fixture)
   5. Cross-provider consistency test runs on the same fixture video with both providers; `cuts_per_minute` divergence within ±15%, `pacing_style` enum matches; divergences are logged but do not auto-fail the test
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 07-01-PLAN.md — tests/contracts/test_v1_backward_compat.py (iterates 12 pipeline_defs) + TEST-01 full-suite API-key-free confirmation (TEST-01, TEST-03)
+- [ ] 07-02-PLAN.md — tests/integration/ scaffolding (__init__.py, conftest.py, README.md, pytest.ini marker, .gitignore) + gemini/openrouter provider suites × 3 fixture tiers (TEST-02)
+- [ ] 07-03-PLAN.md — tests/contracts/test_phase7_e2e_smoke.py (mocked synthesize→accept roundtrip) + tests/contracts/test_phase7_cross_provider_tolerance.py (mocked always + real-mode skipif) (TEST-04, TEST-05)
 **UI hint**: no
 
 ## Progress
@@ -145,4 +148,4 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | 4. Chunking | 3/3 | Complete    | 2026-04-17 |
 | 5. Synthesizer + Staging | 3/3 | Complete    | 2026-04-17 |
 | 6. Skills + Integration | 3/3 | Complete    | 2026-04-17 |
-| 7. Tests | 0/? | Not started | - |
+| 7. Tests | 0/3 | Not started | - |

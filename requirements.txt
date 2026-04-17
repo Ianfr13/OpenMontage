@@ -7,3 +7,4 @@ Pillow>=10.0
 requests>=2.31
 google-genai>=1.73,<2
 openai>=1.0,<3
+ruamel.yaml>=0.18,<0.20

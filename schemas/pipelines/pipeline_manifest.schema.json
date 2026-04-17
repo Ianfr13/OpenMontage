@@ -132,6 +132,20 @@
       }
     },
     "metadata": { "type": "object" },
+    "expected_analysis": {
+      "type": "object",
+      "description": "Signals used by pipeline_synthesizer (Phase 5) for rule-based matching. Optional and additive; absence = no signal contribution.",
+      "properties": {
+        "pacing_style": {
+          "type": "string",
+          "enum": ["slow_contemplative","steady_educational","dynamic_social","rapid_fire","variable"]
+        },
+        "close_up_heavy":       { "type": "boolean" },
+        "static_heavy":         { "type": "boolean" },
+        "expected_stage_count": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
     "orchestration": {
       "type": "object",
       "description": "Executive Producer orchestration config",

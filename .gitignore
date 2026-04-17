@@ -20,6 +20,7 @@ htmlcov/
 # Pipeline outputs (regenerable — never commit large media)
 output/
 pipeline/
+pipeline_defs/_staging/
 tests/qa/output/
 
 # Project workspaces (generated assets, renders — all regenerable)

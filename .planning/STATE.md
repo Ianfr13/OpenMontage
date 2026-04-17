@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-04-17T21:05:19.799Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-04-17T21:41:21.247Z"
 last_activity: 2026-04-17 -- Phase 5 planning complete
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-chunking P02 | 0h | 2 tasks | 3 files |
 | Phase 04-chunking P03 | 7m | 2 tasks | 4 files |
 | Phase 05-synthesizer P01 | 7min | 3 tasks | 15 files |
+| Phase 05 P02 | 7min 25sec | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,10 @@ Recent decisions affecting current work:
 - [Phase 05-synthesizer]: Actual pipeline stage counts used over the plan's estimate table (determinism)
 - [Phase 05-synthesizer]: close_up_heavy maps to shot_type_distribution.talking_head > 0.5 (schema has no close_up key)
 - [Phase 05-synthesizer]: Schema gained documentary category + optional production_modes array to unblock pre-existing pipelines
+- [Phase 05-synthesizer]: 05-02: validation_status emission limited to valid|invalid — 'pending' reserved; never emitted by synthesize_pipeline
+- [Phase 05-synthesizer]: 05-02: validator returns list[str], raise_if_invalid is opt-in; synthesizer does not short-circuit on invalid
+- [Phase 05-synthesizer]: 05-02: emit-then-validate pattern — jsonschema.validate run record BEFORE return to catch producer drift
+- [Phase 05-synthesizer]: 05-02: cinematic.yaml web_search desync (tool not in registry) is pre-existing; deferred to future audit plan
 
 ### Pending Todos
 
@@ -105,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T21:05:12.896Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-04-17T21:41:07.472Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

@@ -54,8 +54,8 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 - [x] **SYNTH-04**: Synthesizer supports `mode="template"` (default, generalizable) and `mode="replica"` (closer reproduction of exact reference)
 - [x] **SYNTH-05**: Synthesizer writes output ONLY to `pipeline_defs/_staging/<slug>.yaml` using `ruamel.yaml>=0.18` (YAML 1.2, comment-preserving); never writes directly to `pipeline_defs/`
 - [x] **SYNTH-06**: Slug generation includes a short content hash to prevent collisions and idempotency breaks on re-runs with same source video
-- [ ] **SYNTH-07**: `lib/pipeline_loader.py:list_pipelines()` excludes any path under `pipeline_defs/_staging/` from its glob
-- [ ] **SYNTH-08**: Synthesized YAML validates against `schemas/pipelines/pipeline_manifest.schema.json` AND passes semantic validation: every referenced `skills/pipelines/<x>/<y>-director.md` file exists; every referenced tool is registered
+- [x] **SYNTH-07**: `lib/pipeline_loader.py:list_pipelines()` excludes any path under `pipeline_defs/_staging/` from its glob
+- [x] **SYNTH-08**: Synthesized YAML validates against `schemas/pipelines/pipeline_manifest.schema.json` AND passes semantic validation: every referenced `skills/pipelines/<x>/<y>-director.md` file exists; every referenced tool is registered
 - [x] **SYNTH-09**: `schemas/artifacts/pipeline_synthesis.schema.json` captures synthesis run record: `base_pipeline`, `match_score`, `mode`, `staging_path`, `diff_against_base`, `validation_status`, `source_analysis_checksum`, `provider_used`
 - [ ] **SYNTH-10**: Agent can accept synthesized pipeline (move `_staging/<slug>.yaml` → `pipeline_defs/<slug>.yaml`) or reject (delete from `_staging/`) via explicit API calls; no auto-approval path exists
 
@@ -159,8 +159,8 @@ Deferred — tracked but not in current roadmap.
 | SYNTH-04 | Phase 5 | Complete |
 | SYNTH-05 | Phase 5 | Complete |
 | SYNTH-06 | Phase 5 | Complete |
-| SYNTH-07 | Phase 5 | Pending |
-| SYNTH-08 | Phase 5 | Pending |
+| SYNTH-07 | Phase 5 | Complete |
+| SYNTH-08 | Phase 5 | Complete |
 | SYNTH-09 | Phase 1 | Complete |
 | SYNTH-10 | Phase 5 | Pending |
 | SKILL-01 | Phase 2 | Pending |

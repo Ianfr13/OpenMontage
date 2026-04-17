@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-04-17T22:44:54.889Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-04-17T22:45:38.394Z"
 last_activity: 2026-04-17 -- Phase 07 Plan 01 complete (TEST-01 + TEST-03 green)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 23
-  completed_plans: 21
-  percent: 91
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -69,6 +69,7 @@ Progress: [█████████░] 91%
 | Phase 05-synthesizer P03 | 7m 2s | 2 tasks | 6 files |
 | Phase 06 P01 | 4m | 2 tasks | 1 files |
 | Phase 07 P01 | 3min | 2 tasks | 3 files |
+| Phase 07-tests P02 | 15m | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Recent decisions affecting current work:
 - [Phase 07-tests]: 07-01: Deletion-lock uses >=12 on total count + exact-set match on v1 names — allows growth, catches shrinkage
 - [Phase 07-tests]: 07-01: TEST-01 harness is env -i HOME=$HOME PATH=$PATH python3 -m pytest; fc-list/fontconfig gap in test_phase2_contracts deferred (pre-existing infra issue)
 - [Phase 07-tests]: 07-01: Glob-at-collection pytest.mark.parametrize over pipeline_defs/*.yaml guarantees future pipelines are auto-covered by the backward-compat gate
+- [Phase 07-tests]: Integration tests double-gated: RUN_INTEGRATION_TESTS=1 + fixture file existence + provider key. Missing gate -> SKIP never FAIL, so default pytest stays green.
+- [Phase 07-tests]: Integration tests drive the VideoAnalyzerSelector (not raw provider tools) so Phase 2 routing is part of acceptance. Assertions target SHAPE (schema validity + top-level keys + chunking metadata) — no numeric value assertions (non-deterministic real-model output).
 
 ### Pending Todos
 
@@ -127,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T22:44:52.767Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-04-17T22:45:38.387Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

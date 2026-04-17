@@ -78,7 +78,7 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 ### Tests — contracts + integration + backward compat
 
 - [x] **TEST-01**: Contract tests (no API key needed) verify: both schemas load, `schema_adapter` canonical→flattened conversion produces a payload each provider SDK accepts (mocked), staging exclusion works, merger output still validates against canonical schema, selector preference logic
-- [ ] **TEST-02**: Integration tests gated by `RUN_INTEGRATION_TESTS=1` run TWICE — once with Gemini direct (requires `GEMINI_API_KEY`), once with OpenRouter (requires `OPENROUTER_API_KEY`); cover 3 fixture videos: short (<2 min), medium (3-5 min), long (>5 min chunked)
+- [x] **TEST-02**: Integration tests gated by `RUN_INTEGRATION_TESTS=1` run TWICE — once with Gemini direct (requires `GEMINI_API_KEY`), once with OpenRouter (requires `OPENROUTER_API_KEY`); cover 3 fixture videos: short (<2 min), medium (3-5 min), long (>5 min chunked)
 - [x] **TEST-03**: Backward compatibility gate: all 12 existing `pipeline_defs/*.yaml` still load via `pipeline_loader` and pass their existing contract tests
 - [ ] **TEST-04**: End-to-end smoke: given a fixture reference video, run `reference-synthesis.md` flow headlessly (auto-approve via test fixture) for each provider, producing a valid `pipeline_defs/<slug>.yaml` that passes schema + semantic validation
 - [ ] **TEST-05**: Cross-provider consistency test: same video analyzed by both providers produces artifacts whose 4-dimension fields agree within documented tolerance (e.g., `cuts_per_minute` within ±15%, `pacing_style` enum match); divergences logged, not auto-failed
@@ -174,7 +174,7 @@ Deferred — tracked but not in current roadmap.
 | INT-03 | Phase 6 | Complete |
 | INT-04 | Phase 1 | Complete |
 | TEST-01 | Phase 7 | Complete |
-| TEST-02 | Phase 7 | Pending |
+| TEST-02 | Phase 7 | Complete |
 | TEST-03 | Phase 7 | Complete |
 | TEST-04 | Phase 7 | Pending |
 | TEST-05 | Phase 7 | Pending |

@@ -64,7 +64,7 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 - [ ] **SKILL-01**: `.agents/skills/gemini-video-analysis/SKILL.md` documents Gemini-specific prompting per dimension with examples of good vs bad extraction (Files API quirks, token counting, 5-min timecode hallucination warning, structured output patterns)
 - [ ] **SKILL-02**: `.agents/skills/openrouter-video-analysis/SKILL.md` documents OpenRouter-specific prompting (base64-only inline, model swapping via env, `response_format` compatibility per model, cost surfacing via OpenRouter credits)
 - [ ] **SKILL-03**: Both providers' Layer 3 skills are Phase exit gates: field-level quality review on one real video required before closing the provider's phase
-- [ ] **SKILL-04**: `skills/meta/reference-synthesis.md` orchestrates the flow: receive video → select provider via selector → analyze (chunked if needed) → synthesize → present diff for approval; invokes `lib/checkpoint.py` directly with 2 `awaiting_human` gates (analysis review, synthesis diff approval)
+- [x] **SKILL-04**: `skills/meta/reference-synthesis.md` orchestrates the flow: receive video → select provider via selector → analyze (chunked if needed) → synthesize → present diff for approval; invokes `lib/checkpoint.py` directly with 2 `awaiting_human` gates (analysis review, synthesis diff approval)
 - [ ] **SKILL-05**: `skills/meta/video-reference-analyst.md` is refactored to consume the structured `video_analysis` artifact; preserves freeform fallback for backward compat
 - [ ] **SKILL-06**: `AGENT_GUIDE.md` "Reference Video Entry Point" section is updated with disambiguation rule (user wants pipeline synthesis → `reference-synthesis.md`; concepts only → current `video-reference-analyst.md` flow) plus provider selection guidance
 
@@ -166,7 +166,7 @@ Deferred — tracked but not in current roadmap.
 | SKILL-01 | Phase 2 | Pending |
 | SKILL-02 | Phase 3 | Pending |
 | SKILL-03 | Phase 2 | Pending |
-| SKILL-04 | Phase 6 | Pending |
+| SKILL-04 | Phase 6 | Complete |
 | SKILL-05 | Phase 6 | Pending |
 | SKILL-06 | Phase 6 | Pending |
 | INT-01 | Phase 6 | Pending |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Reference Synthesis
-status: verifying
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-04-17T21:57:32.603Z"
-last_activity: 2026-04-17
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-04-17T22:18:44.787Z"
+last_activity: 2026-04-17 -- Phase 6 planning complete
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
+  total_plans: 20
+  completed_plans: 18
+  percent: 90
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 Phase: 6
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-17
+Status: Ready to execute
+Last activity: 2026-04-17 -- Phase 6 planning complete
 
 Progress: [██████████] 100%
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 05-synthesizer P01 | 7min | 3 tasks | 15 files |
 | Phase 05 P02 | 7min 25sec | 2 tasks | 6 files |
 | Phase 05-synthesizer P03 | 7m 2s | 2 tasks | 6 files |
+| Phase 06 P01 | 4m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions affecting current work:
 - [Phase 05-synthesizer]: 05-03: _merge_stage_details drops stages absent from base (SYNTH-03 hard rule: LLM cannot invent structure)
 - [Phase 05-synthesizer]: 05-03: accept_synthesis returns (Path, record) tuple; reject_synthesis encodes user rejection as validation_status=invalid (Pitfall 2 — schema has no 'rejected')
 - [Phase 05-synthesizer]: 05-03: order-aware SYNTH-10 regex (synthes\w*accept forbidden; accept_synthesis permitted) replaces 05-02 unordered substring check
+- [Phase 06]: SKILL-04 reference-synthesis meta skill ships as single markdown (no SKILL/reference.md split) matching onboarding.md pattern
+- [Phase 06]: Two awaiting_human gates (analysis review + diff approval) cemented as architectural — Anti-Patterns + 4 grep-anchor points enforce against drift
 
 ### Pending Todos
 
@@ -117,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T21:52:18.486Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-04-17T22:18:44.775Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

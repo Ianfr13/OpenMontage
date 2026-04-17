@@ -84,7 +84,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 - [x] 04-01-PLAN.md — lib/video_chunker.py + VideoChunkingError + unit tests (CHUNK-01, CHUNK-02)
 - [x] 04-02-PLAN.md — lib/analysis_merger.py per-dimension merge rules + unit tests (CHUNK-04, CHUNK-05)
-- [ ] 04-03-PLAN.md — lib/chunked_analyzer.py ThreadPoolExecutor + cost_tracker + contract test (CHUNK-03, CHUNK-06)
+- [x] 04-03-PLAN.md — lib/chunked_analyzer.py ThreadPoolExecutor + cost_tracker + contract test (CHUNK-03, CHUNK-06)
 **UI hint**: no
 
 ### Phase 5: Synthesizer + Staging

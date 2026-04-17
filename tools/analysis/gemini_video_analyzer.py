@@ -393,7 +393,12 @@ class GeminiVideoAnalyzer(BaseTool):
         uploaded = None
         model_used: str | None = None
         try:
-            uploaded = client.files.upload(file=str(video_path))
+            try:
+                uploaded = client.files.upload(file=str(video_path))
+            except errors.APIError as exc:
+                raise VideoUploadError(
+                    f"Files API upload failed: {exc}"
+                ) from exc
             active = _wait_for_active(
                 client, uploaded.name, max_seconds=max_poll
             )

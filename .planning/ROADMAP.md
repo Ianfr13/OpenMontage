@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Schema + Adapter** — Canonical `video_analysis` schema, `schema_adapter`, and checkpoint registration; the contract every downstream component depends on
 - [x] **Phase 2: Gemini Provider** — `gemini_video_analyzer` + `video_analyzer_selector` + Layer 3 Gemini skill; first end-to-end analysis path with selector routing from day one (completed 2026-04-17)
 - [x] **Phase 3: OpenRouter Provider** — `openrouter_video_analyzer` slots into the existing selector; both providers produce artifacts passing the same canonical schema (completed 2026-04-17)
-- [ ] **Phase 4: Chunking** — `lib/video_chunker.py` + `lib/analysis_merger.py`; videos >5 min analyzed in bounded-concurrency chunks with merged canonical output
+- [x] **Phase 4: Chunking** — `lib/video_chunker.py` + `lib/analysis_merger.py`; videos >5 min analyzed in bounded-concurrency chunks with merged canonical output (completed 2026-04-17)
 - [ ] **Phase 5: Synthesizer + Staging** — `lib/pipeline_synthesizer.py` with rule-based matching, staging path, semantic validation, and human-approval gating
 - [ ] **Phase 6: Skills + Integration** — `reference-synthesis.md` meta skill, refactored `video-reference-analyst.md`, `AGENT_GUIDE.md` disambiguation, `CONTEXT.md` and `requirements.txt` updates
 - [ ] **Phase 7: Tests** — Contract tests (no key), dual-provider integration, cross-provider consistency, backward compat gate, E2E smoke
@@ -136,7 +136,7 @@ Note: Phase 4 (Chunking) depends on Phase 2 (Gemini Provider) only — it can be
 | 1. Schema + Adapter | 0/? | Not started | - |
 | 2. Gemini Provider | 4/4 | Complete    | 2026-04-17 |
 | 3. OpenRouter Provider | 3/3 | Complete    | 2026-04-17 |
-| 4. Chunking | 0/3 | Not started | - |
+| 4. Chunking | 3/3 | Complete    | 2026-04-17 |
 | 5. Synthesizer + Staging | 0/? | Not started | - |
 | 6. Skills + Integration | 0/? | Not started | - |
 | 7. Tests | 0/? | Not started | - |

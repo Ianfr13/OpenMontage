@@ -393,8 +393,10 @@ class GeminiVideoAnalyzer(BaseTool):
 
         try:
             client = genai.Client(api_key=key)
-        except Exception as exc:  # SDK init error — auth/config level
+        except errors.APIError as exc:  # SDK init error — auth/config level
             # T-02-06: str(exc) from the SDK does not contain the raw key.
+            # Narrow to APIError so TypeError/ImportError from future SDK
+            # changes surface as real errors rather than masked "auth issue".
             return ToolResult(
                 success=False,
                 error=f"Gemini client init failed: {exc}",

@@ -14,8 +14,8 @@ Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Tra
 ### Analyzer — capability + selector + schema (provider-agnostic)
 
 - [ ] **ANLZ-01**: Agent can declare `video_analysis` capability; `tools/analysis/video_analyzer_selector.py` routes via registry auto-discovery (mirrors `video_selector.py`); preference order is: explicit user choice > `GEMINI_API_KEY` present (direct) > `OPENROUTER_API_KEY` present (router) > first available
-- [ ] **ANLZ-02**: `schemas/artifacts/video_analysis.schema.json` is a new schema (not an extension of `video_analysis_brief.schema.json`) with 4 top-level dimension keys: `editing_pacing`, `audio`, `visual_style`, `narrative`; canonical representation for `jsonschema` validation
-- [ ] **ANLZ-03**: Provider tools maintain a parallel flattened inline schema dict (stripping `$ref`, `additionalProperties: false`, `uniqueItems`) used for API-side structured output; conversion lives in `lib/schema_adapter.py` with unit tests
+- [x] **ANLZ-02**: `schemas/artifacts/video_analysis.schema.json` is a new schema (not an extension of `video_analysis_brief.schema.json`) with 4 top-level dimension keys: `editing_pacing`, `audio`, `visual_style`, `narrative`; canonical representation for `jsonschema` validation
+- [x] **ANLZ-03**: Provider tools maintain a parallel flattened inline schema dict (stripping `$ref`, `additionalProperties: false`, `uniqueItems`) used for API-side structured output; conversion lives in `lib/schema_adapter.py` with unit tests
 - [ ] **ANLZ-04**: Agent receives `ToolResult` with validated `video_analysis` artifact containing every required field across the 4 dimensions; missing/uncertain fields set `confidence: "low"` explicitly rather than defaulting silently
 - [ ] **ANLZ-05**: Provider tools accept optional `shot_boundaries` parameter from `scene_detect` (hybrid detection); if absent, provider infers them with `shot_boundary_source: "model"` in artifact
 - [ ] **ANLZ-06**: Both providers produce artifacts that pass the same canonical schema — selector abstracts provider differences away from the caller
@@ -131,8 +131,8 @@ Deferred — tracked but not in current roadmap.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ANLZ-01 | Phase 2 | Pending |
-| ANLZ-02 | Phase 1 | Pending |
-| ANLZ-03 | Phase 1 | Pending |
+| ANLZ-02 | Phase 1 | Complete |
+| ANLZ-03 | Phase 1 | Complete |
 | ANLZ-04 | Phase 2 | Pending |
 | ANLZ-05 | Phase 2 | Pending |
 | ANLZ-06 | Phase 3 | Pending |

@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Reference Synthesis
+status: executing
+stopped_at: Completed 01-01-PLAN.md (video_analysis canonical schema + contract tests)
+last_updated: "2026-04-17T15:28:11.309Z"
+last_activity: 2026-04-17
+progress:
+  total_phases: 7
+  completed_phases: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 25
+---
+
 # Project State
 
 ## Project Reference
@@ -5,20 +21,21 @@
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Agente instruction-driven que entrega vídeo end-to-end sem vazar decisões criativas para Python.
-**Current focus:** Milestone v2.0 Reference Synthesis — Phase 1 / Schema + Adapter
+**Current focus:** Phase 01 — schema-adapter
 
 ## Current Position
 
-Phase: 1 of 7 (Schema + Adapter)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-04-17 — Roadmap created; 47 requirements mapped across 7 phases
+Phase: 01 (schema-adapter) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-17
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: —
 - Total execution time: 0 hours
@@ -30,10 +47,12 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: —
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -46,6 +65,8 @@ Recent decisions affecting current work:
 - Roadmap: `pipeline_defs/_staging/` exclusion established in Phase 5 (Pitfall 11)
 - Roadmap: `schema_adapter` ships in Phase 1 before any provider code (Pitfall 3)
 - Roadmap: Phase 4 (Chunking) depends on Phase 2 only; can run after Phase 2 independent of Phase 3
+- [Phase 01]: Confidence shape chosen: dimension-level map (additionalProperties enum low/medium/high), not per-field siblings — resolves Research Assumption A1
+- [Phase 01]: video_analysis schema version const = 2.0 (aligns with milestone v2.0); v1.0 brief keeps const 1.0
 
 ### Pending Todos
 
@@ -60,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17
-Stopped at: Roadmap written; REQUIREMENTS.md traceability updated
+Last session: 2026-04-17T15:28:11.301Z
+Stopped at: Completed 01-01-PLAN.md (video_analysis canonical schema + contract tests)
 Resume file: None

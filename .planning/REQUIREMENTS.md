@@ -1,0 +1,191 @@
+# Requirements: OpenMontage v2.0 Reference Synthesis
+
+**Defined:** 2026-04-17
+**Core Value:** Um agente que lê instruções e entrega um vídeo produzido end-to-end — sem que decisões criativas ou de tooling vazem para código Python.
+
+**Milestone focus:** Dado um vídeo de referência (arquivo local), extrair sua gramática completa em 4 dimensões estruturadas via Gemini — acessível por dois providers intercambiáveis (Gemini SDK direto OU OpenRouter) — e sintetizar um pipeline persistente que reproduz aquele formato.
+
+---
+
+## v2.0 Requirements
+
+Grouped by category. Each maps to exactly one phase in ROADMAP.md (filled in Traceability).
+
+### Analyzer — capability + selector + schema (provider-agnostic)
+
+- [ ] **ANLZ-01**: Agent can declare `video_analysis` capability; `tools/analysis/video_analyzer_selector.py` routes via registry auto-discovery (mirrors `video_selector.py`); preference order is: explicit user choice > `GEMINI_API_KEY` present (direct) > `OPENROUTER_API_KEY` present (router) > first available
+- [ ] **ANLZ-02**: `schemas/artifacts/video_analysis.schema.json` is a new schema (not an extension of `video_analysis_brief.schema.json`) with 4 top-level dimension keys: `editing_pacing`, `audio`, `visual_style`, `narrative`; canonical representation for `jsonschema` validation
+- [ ] **ANLZ-03**: Provider tools maintain a parallel flattened inline schema dict (stripping `$ref`, `additionalProperties: false`, `uniqueItems`) used for API-side structured output; conversion lives in `lib/schema_adapter.py` with unit tests
+- [ ] **ANLZ-04**: Agent receives `ToolResult` with validated `video_analysis` artifact containing every required field across the 4 dimensions; missing/uncertain fields set `confidence: "low"` explicitly rather than defaulting silently
+- [ ] **ANLZ-05**: Provider tools accept optional `shot_boundaries` parameter from `scene_detect` (hybrid detection); if absent, provider infers them with `shot_boundary_source: "model"` in artifact
+- [ ] **ANLZ-06**: Both providers produce artifacts that pass the same canonical schema — selector abstracts provider differences away from the caller
+
+### Provider: Gemini direct (google-genai SDK)
+
+- [ ] **GEM-01**: `tools/analysis/gemini_video_analyzer.py` exists as a `BaseTool` with `capability="video_analysis"`, `provider="gemini"`; auth via `GEMINI_API_KEY` (fallback `GOOGLE_API_KEY`); model via `GEMINI_VIDEO_MODEL` env (default `gemini-3.1-pro-preview`, falls back to `gemini-2.5-pro` if preview unavailable)
+- [ ] **GEM-02**: Tool uses Files API (`client.files.upload` → poll `ACTIVE` → pass file reference to `generate_content`) for any video; max poll wait configurable (default 300s) with explicit `VideoUploadError` on `FAILED` or timeout
+- [ ] **GEM-03**: Tool deletes uploaded file after analysis completes (auto-delete at 48h is not sufficient for cost/isolation)
+- [ ] **GEM-04**: Tool uses `response_mime_type="application/json"` + `response_json_schema=<flattened>` for structured output; detects null/truncated response and retries once with `analysis_depth="compact"` before raising
+- [ ] **GEM-05**: Tool's `agent_skills` field references `.agents/skills/gemini-video-analysis/SKILL.md` (Layer 3 knowledge for Gemini-specific prompting)
+
+### Provider: OpenRouter (openai SDK)
+
+- [ ] **OR-01**: `tools/analysis/openrouter_video_analyzer.py` exists as a `BaseTool` with `capability="video_analysis"`, `provider="openrouter"`; auth via `OPENROUTER_API_KEY`; model via `OPENROUTER_MODEL` env (default `google/gemini-3.1-pro-preview`)
+- [ ] **OR-02**: Tool uses `openai>=1.0` SDK with `base_url="https://openrouter.ai/api/v1"`
+- [ ] **OR-03**: Tool encodes video as `data:video/mp4;base64,...` inline (OpenRouter + Gemini does not accept URL); rejects files above configurable `max_upload_bytes` before encoding
+- [ ] **OR-04**: Tool calls `/chat/completions` with `video_url` content type; uses `response_format={"type": "json_schema", "json_schema": {...}}` when the underlying model supports it; otherwise falls back to prompt-embedded schema with post-validation retry
+- [ ] **OR-05**: Tool detects `finish_reason == "length"` silent truncation and retries once with `analysis_depth="compact"` before raising
+- [ ] **OR-06**: Tool's `agent_skills` field references `.agents/skills/openrouter-video-analysis/SKILL.md` (Layer 3 knowledge for OpenRouter-specific prompting and model quirks)
+
+### Chunking — long-form video support
+
+- [ ] **CHUNK-01**: `lib/video_chunker.py` splits any video into ≤5 min keyframe-aligned chunks via FFmpeg (`-c copy -reset_timestamps 1`); returns chunk list with `[start_global, end_global, local_path]` tuples
+- [ ] **CHUNK-02**: When video is ≤5 min, provider bypasses chunking and analyzes in one call
+- [ ] **CHUNK-03**: When video is >5 min, the caller (selector or meta skill) analyzes chunks with bounded concurrency (`concurrent.futures.ThreadPoolExecutor`, max 4 workers default, configurable), respecting rate limits
+- [ ] **CHUNK-04**: `lib/analysis_merger.py` merges per-chunk `video_analysis` artifacts into a single canonical artifact via documented rules: editing fields recomputed globally, narrative hook/arc from chunk 1, CTA from last chunk, section_structure concatenated with global timecodes, audio fields weighted-averaged by chunk duration, visual fields majority-vote weighted by chunk duration
+- [ ] **CHUNK-05**: Merged artifact includes `chunking_metadata` (chunk count, per-chunk cost, total duration, provider used per chunk) for traceability
+- [ ] **CHUNK-06**: Cost tracker `tools/cost_tracker.py` records each chunk analysis separately per provider; estimated cost surfaced before running for videos >5 min
+
+### Synthesizer — pipeline generation + staging
+
+- [ ] **SYNTH-01**: `lib/pipeline_synthesizer.py` (NOT a `BaseTool`, mirrors `lib/playbook_generator.py`) consumes a `video_analysis` artifact and emits pipeline YAML
+- [ ] **SYNTH-02**: Synthesizer uses rule-based matching (not LLM) for base pipeline selection: maps `pacing_style` + `shot_type_distribution` + `motion_type_distribution` to one of the 12 existing pipelines with a `match_score` between 0-1
+- [ ] **SYNTH-03**: Synthesizer uses an LLM (provider-agnostic, same selector or a lighter model like `gemini-2.5-flash`) only to fill stage-level details inside the matched base pipeline template — never to invent stage structure
+- [ ] **SYNTH-04**: Synthesizer supports `mode="template"` (default, generalizable) and `mode="replica"` (closer reproduction of exact reference)
+- [ ] **SYNTH-05**: Synthesizer writes output ONLY to `pipeline_defs/_staging/<slug>.yaml` using `ruamel.yaml>=0.18` (YAML 1.2, comment-preserving); never writes directly to `pipeline_defs/`
+- [ ] **SYNTH-06**: Slug generation includes a short content hash to prevent collisions and idempotency breaks on re-runs with same source video
+- [ ] **SYNTH-07**: `lib/pipeline_loader.py:list_pipelines()` excludes any path under `pipeline_defs/_staging/` from its glob
+- [ ] **SYNTH-08**: Synthesized YAML validates against `schemas/pipelines/pipeline_manifest.schema.json` AND passes semantic validation: every referenced `skills/pipelines/<x>/<y>-director.md` file exists; every referenced tool is registered
+- [ ] **SYNTH-09**: `schemas/artifacts/pipeline_synthesis.schema.json` captures synthesis run record: `base_pipeline`, `match_score`, `mode`, `staging_path`, `diff_against_base`, `validation_status`, `source_analysis_checksum`, `provider_used`
+- [ ] **SYNTH-10**: Agent can accept synthesized pipeline (move `_staging/<slug>.yaml` → `pipeline_defs/<slug>.yaml`) or reject (delete from `_staging/`) via explicit API calls; no auto-approval path exists
+
+### Skills — Layer 2 + Layer 3
+
+- [ ] **SKILL-01**: `.agents/skills/gemini-video-analysis/SKILL.md` documents Gemini-specific prompting per dimension with examples of good vs bad extraction (Files API quirks, token counting, 5-min timecode hallucination warning, structured output patterns)
+- [ ] **SKILL-02**: `.agents/skills/openrouter-video-analysis/SKILL.md` documents OpenRouter-specific prompting (base64-only inline, model swapping via env, `response_format` compatibility per model, cost surfacing via OpenRouter credits)
+- [ ] **SKILL-03**: Both providers' Layer 3 skills are Phase exit gates: field-level quality review on one real video required before closing the provider's phase
+- [ ] **SKILL-04**: `skills/meta/reference-synthesis.md` orchestrates the flow: receive video → select provider via selector → analyze (chunked if needed) → synthesize → present diff for approval; invokes `lib/checkpoint.py` directly with 2 `awaiting_human` gates (analysis review, synthesis diff approval)
+- [ ] **SKILL-05**: `skills/meta/video-reference-analyst.md` is refactored to consume the structured `video_analysis` artifact; preserves freeform fallback for backward compat
+- [ ] **SKILL-06**: `AGENT_GUIDE.md` "Reference Video Entry Point" section is updated with disambiguation rule (user wants pipeline synthesis → `reference-synthesis.md`; concepts only → current `video-reference-analyst.md` flow) plus provider selection guidance
+
+### Integration — docs + env + backward compat
+
+- [ ] **INT-01**: `CONTEXT.md` tools table is updated with new `tools/analysis` rows for `video_analyzer_selector`, `gemini_video_analyzer`, `openrouter_video_analyzer`
+- [ ] **INT-02**: `requirements.txt` (or equivalent) adds `google-genai>=1.73`, `openai>=1.0`, `ruamel.yaml>=0.18`; no conflicting deps
+- [ ] **INT-03**: `lib/env_loader.py` and docs document all four relevant env vars: `GEMINI_API_KEY` / `GOOGLE_API_KEY` (direct), `OPENROUTER_API_KEY`, `GEMINI_VIDEO_MODEL`, `OPENROUTER_MODEL`; plus `VIDEO_ANALYZER_PROVIDER` override (gemini/openrouter/auto, default auto)
+- [ ] **INT-04**: `lib/checkpoint.py:CANONICAL_STAGE_ARTIFACTS` maps the new `video_analysis` and `pipeline_synthesis` stages to their schema files
+
+### Tests — contracts + integration + backward compat
+
+- [ ] **TEST-01**: Contract tests (no API key needed) verify: both schemas load, `schema_adapter` canonical→flattened conversion produces a payload each provider SDK accepts (mocked), staging exclusion works, merger output still validates against canonical schema, selector preference logic
+- [ ] **TEST-02**: Integration tests gated by `RUN_INTEGRATION_TESTS=1` run TWICE — once with Gemini direct (requires `GEMINI_API_KEY`), once with OpenRouter (requires `OPENROUTER_API_KEY`); cover 3 fixture videos: short (<2 min), medium (3-5 min), long (>5 min chunked)
+- [ ] **TEST-03**: Backward compatibility gate: all 12 existing `pipeline_defs/*.yaml` still load via `pipeline_loader` and pass their existing contract tests
+- [ ] **TEST-04**: End-to-end smoke: given a fixture reference video, run `reference-synthesis.md` flow headlessly (auto-approve via test fixture) for each provider, producing a valid `pipeline_defs/<slug>.yaml` that passes schema + semantic validation
+- [ ] **TEST-05**: Cross-provider consistency test: same video analyzed by both providers produces artifacts whose 4-dimension fields agree within documented tolerance (e.g., `cuts_per_minute` within ±15%, `pacing_style` enum match); divergences logged, not auto-failed
+
+---
+
+## v2.1 Requirements
+
+Deferred — tracked but not in current roadmap.
+
+### Additional providers / interfaces
+
+- **PROV-01**: Gemini CLI provider (wraps `gemini -p ... --output-format json`) if Google adds user-schema enforcement (issue #8022)
+- **PROV-02**: Claude provider via Anthropic SDK when Anthropic ships video input
+- **PROV-03**: Local/offline analyzer using open-weights video LLM
+
+### Synthesis quality improvements
+
+- **SYNTH2-01**: LLM-scored match confidence beyond rule-based (explainable ranking)
+- **SYNTH2-02**: Interactive diff UI — show synthesized vs base pipeline side-by-side before approval
+- **SYNTH2-03**: Auto-regenerate refactor: user tweaks analysis fields, synthesizer re-emits
+
+### Observability
+
+- **OBS-01**: Full cost tracking integration between analyzer chunks, synthesizer LLM calls, and provider credit burn
+- **OBS-02**: Analysis cache keyed by file checksum + provider + model (same video analyzed twice = free per provider)
+
+---
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Auto-generation of director skills | Explicit user decision: reuse existing directors; LLM-written skills risk variable quality |
+| Ephemeral pipeline per run | Explicit user decision: persistent in `pipeline_defs/` only; no `--ephemeral` flag |
+| Gemini CLI as a provider | CLI cannot enforce custom JSON schema (issue #8022 open since Sep/2025); video attachment via `@path` undocumented for video — SDK path is strictly better |
+| Video input via URL for OpenRouter provider | Gemini via OpenRouter rejects URL; only base64 inline. Gemini direct (via Files API) does support URL/reference but we still accept local file path uniformly |
+| Direct Anthropic / Claude provider | Claude doesn't ship video input at v2.0 start; will revisit in v2.1 |
+| Fine-tuned / custom analysis model | Out of selector surface in v2.0; `GEMINI_VIDEO_MODEL`/`OPENROUTER_MODEL` env vars cover model switching |
+| Auto-execution of synthesized pipeline | Human-in-the-loop approval is architectural; removing it breaks the safety contract |
+| Full per-frame color extraction | Inflates artifact size; dominant_colors_hex + palette sampling is sufficient |
+| Font family identification | Gemini cannot reliably ID typefaces; typography_style is description only |
+| New Remotion scene types | v2.0 maps to existing 12 scene types only; new scenes are future work |
+| Real-time analysis (streaming) | Batch-only in v2.0; streaming adds complexity without matching user value |
+
+---
+
+## Traceability
+
+To be populated by `gsd-roadmapper` during roadmap creation. Each REQ-ID maps to exactly one phase.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ANLZ-01 | — | Pending |
+| ANLZ-02 | — | Pending |
+| ANLZ-03 | — | Pending |
+| ANLZ-04 | — | Pending |
+| ANLZ-05 | — | Pending |
+| ANLZ-06 | — | Pending |
+| GEM-01 | — | Pending |
+| GEM-02 | — | Pending |
+| GEM-03 | — | Pending |
+| GEM-04 | — | Pending |
+| GEM-05 | — | Pending |
+| OR-01 | — | Pending |
+| OR-02 | — | Pending |
+| OR-03 | — | Pending |
+| OR-04 | — | Pending |
+| OR-05 | — | Pending |
+| OR-06 | — | Pending |
+| CHUNK-01 | — | Pending |
+| CHUNK-02 | — | Pending |
+| CHUNK-03 | — | Pending |
+| CHUNK-04 | — | Pending |
+| CHUNK-05 | — | Pending |
+| CHUNK-06 | — | Pending |
+| SYNTH-01 | — | Pending |
+| SYNTH-02 | — | Pending |
+| SYNTH-03 | — | Pending |
+| SYNTH-04 | — | Pending |
+| SYNTH-05 | — | Pending |
+| SYNTH-06 | — | Pending |
+| SYNTH-07 | — | Pending |
+| SYNTH-08 | — | Pending |
+| SYNTH-09 | — | Pending |
+| SYNTH-10 | — | Pending |
+| SKILL-01 | — | Pending |
+| SKILL-02 | — | Pending |
+| SKILL-03 | — | Pending |
+| SKILL-04 | — | Pending |
+| SKILL-05 | — | Pending |
+| SKILL-06 | — | Pending |
+| INT-01 | — | Pending |
+| INT-02 | — | Pending |
+| INT-03 | — | Pending |
+| INT-04 | — | Pending |
+| TEST-01 | — | Pending |
+| TEST-02 | — | Pending |
+| TEST-03 | — | Pending |
+| TEST-04 | — | Pending |
+| TEST-05 | — | Pending |
+
+**Coverage:**
+- v2.0 requirements: 47 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 47 ⚠️ (expected — roadmap runs next)
+
+---
+*Requirements defined: 2026-04-17*
+*Last updated: 2026-04-17 after pivot to dual-provider (Gemini SDK + OpenRouter)*

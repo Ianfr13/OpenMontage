@@ -168,9 +168,16 @@ class GeminiVideoAnalyzer(BaseTool):
     retry_policy = RetryPolicy(max_retries=1, backoff_seconds=0.0)
     resource_profile = ResourceProfile(network_required=True)
 
-    # Flatten canonical schema exactly once at class-load (RESEARCH Example 2).
-    # Cached dict — to_api_schema returns a deepcopy, so this is safe to share.
-    _FLAT_SCHEMA: dict = to_api_schema(load_schema("video_analysis"))
+    # Flatten canonical schema lazily on first use (not at import time),
+    # then cache on the class. Shared safely across instances because
+    # to_api_schema returns a deepcopy. See REVIEW MD-01.
+    _FLAT_SCHEMA: dict | None = None
+
+    @classmethod
+    def _flat_schema(cls) -> dict:
+        if cls._FLAT_SCHEMA is None:
+            cls._FLAT_SCHEMA = to_api_schema(load_schema("video_analysis"))
+        return cls._FLAT_SCHEMA
 
     input_schema = {
         "type": "object",
@@ -259,7 +266,7 @@ class GeminiVideoAnalyzer(BaseTool):
         to the caller (which handles the model-fallback branch)."""
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_json_schema=self._FLAT_SCHEMA,
+            response_json_schema=self._flat_schema(),
         )
         try:
             response = client.models.generate_content(

@@ -156,14 +156,43 @@ def test_resolve_model_default_and_override(monkeypatch):
 
 
 def test_openai_client_base_url(mock_openai, fake_video):
-    """OR-02: OpenAI client built with base_url="https://openrouter.ai/api/v1"."""
+    """OR-02 / CLEAN-04: OpenAI client built with base_url=OPENROUTER_BASE_URL
+    (the module-level constant, not a hardcoded literal).
+
+    Updated for CLEAN-04: we now assert only the constant — the previous
+    assertion on the string literal was redundant and gave the false
+    impression the code respected the constant when it actually inlined
+    the literal (v2.0 Phase 3 MD-03). After CLEAN-04 the literal appears
+    exactly once in the source: the OPENROUTER_BASE_URL definition.
+    """
     import tools.analysis.openrouter_video_analyzer as target
     t = OpenRouterVideoAnalyzer()
     result = t.execute({"video_path": str(fake_video)})
     assert result.success is True, result.error
-    # The OpenAI name at the module level has been patched by mock_openai to a MagicMock
-    assert target.OpenAI.call_args.kwargs["base_url"] == "https://openrouter.ai/api/v1"
+    # Client was constructed with the constant.
     assert target.OpenAI.call_args.kwargs["base_url"] == OPENROUTER_BASE_URL
+    # Defense-in-depth: constant still points at the documented OpenRouter base.
+    assert OPENROUTER_BASE_URL == "https://openrouter.ai/api/v1"
+
+
+def test_openrouter_base_url_literal_appears_exactly_once():
+    """CLEAN-04 / MD-03 acceptance: grep the source; literal appears exactly
+    once (the constant definition). No call-site literal remains.
+
+    Mirrors the ROADMAP success criterion for Phase 8:
+      grep -n '"https://openrouter.ai/api/v1"' tools/analysis/openrouter_video_analyzer.py
+    must return exactly one match.
+    """
+    src = _SOURCE_PATH.read_text(encoding="utf-8")
+    # Count occurrences of the literal (exclude f-string interpolation).
+    # The constant is defined as: OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+    # So the literal "https://openrouter.ai/api/v1" should appear exactly once.
+    count = src.count('"https://openrouter.ai/api/v1"')
+    assert count == 1, (
+        f'Expected exactly 1 occurrence of the literal "https://openrouter.ai/api/v1" '
+        f"(the OPENROUTER_BASE_URL definition); found {count}. "
+        f"Check that no call-site still hardcodes the literal."
+    )
 
 
 def test_api_key_passed_explicitly(mock_openai, fake_video):

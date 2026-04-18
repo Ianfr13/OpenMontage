@@ -68,6 +68,23 @@ Deferred beyond v2.1 — tracked but not in this milestone's roadmap.
 - **INFRA-05**: README inflated skill-count claim (TODO.md)
 - **INFRA-06**: E2E with real Remotion render (TODO.md)
 
+### Code Hygiene (deferred from NITS-01)
+
+Deferred items from Phase 11-02 absorb pass — each was classified during Task 1 as
+either behavior-change or requires-new-test and therefore outside the narrow
+absorb window. See `.planning/phases/11-drift-hygiene/11-02-SUMMARY.md` for the
+full classification table; each ID below references one row.
+
+- **NITS-DEF-P3-LO-03**: Redact OpenRouter key patterns (`sk-or-v1-...`) from exception strings in `tools/analysis/openrouter_video_analyzer.py` via a new `_safe_exc_str` helper. Requires a new unit test that mocks `APIError.__str__` with a fake key. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/03-openrouter-provider/03-REVIEW.md#LO-03`). Rationale: new-test requirement + current SDK verified safe.
+- **NITS-DEF-P3-LO-04**: Strip leading/trailing markdown fences before `json.loads(content)` in `_run_once` for `anthropic/claude-*` routes on the prompt-embedded fallback. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/03-openrouter-provider/03-REVIEW.md#LO-04`). Rationale: requires a new unit test with a fenced response — behavior change.
+- **NITS-DEF-P3-NI-01**: Extract `_normalize_shot_boundaries` / `_format_shot_boundaries` from the two analyzer tools into `lib/` once a third provider materializes. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/03-openrouter-provider/03-REVIEW.md#NI-01`). Rationale: review disposition explicitly defers to Phase 6 cleanup; refactor outside absorb scope.
+- **NITS-DEF-P3-NI-02**: Replace the shared-mutable `_FLAT_SCHEMA: dict | None = None` class attribute with `functools.lru_cache` on `_flat_schema`. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/03-openrouter-provider/03-REVIEW.md#NI-02`). Rationale: review itself says "Not worth changing for this phase."
+- **NITS-DEF-P4-LO-05**: Reconcile orphan cost-tracker reservations when `_analyze_chunks` fail_fast trips on a max_workers>1 pool. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/04-chunking/04-REVIEW.md#LO-05`). Rationale: needs a multi-worker regression test + new error-path reconcile loop — behavior change.
+- **NITS-DEF-P4-LO-06**: Guard `split_video` bypass path against zero-duration ffprobe output (`if duration <= 0.0: raise VideoChunkingError(...)`). (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/04-chunking/04-REVIEW.md#LO-06`). Rationale: review's own fix suggestion requires a new regression test — new-test out of absorb scope.
+- **NITS-DEF-P4-NI-01**: Migrate `Chunk.local_path: str` to `pathlib.Path` for intra-module consistency. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/04-chunking/04-REVIEW.md#NI-01`). Rationale: review disposition says "Not worth changing — either choice is defensible."
+- **NITS-DEF-P5-LR-03**: Deduplicate the `VIDEO_SYNTH_LLM_FILL=false` gate across `synthesize_pipeline` and `fill_stage_details`. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/05-synthesizer/05-REVIEW.md#LR-03`). Rationale: attempted fix during Phase 11-02 broke `test_llm_fill_env_controlled` (which asserts the outer gate prevents the call); reverted. Need to refactor the test semantics before removing either gate — behavior change.
+- **NITS-DEF-P5-NR-04**: Add round-trip validation via `load_pipeline(slug, defs_dir=STAGING_DIR)` after `_write_staging` to catch ruamel-dump vs schema-shape divergence. (deferred from Phase 11-02; see `.planning/milestones/v2.0-phases/05-synthesizer/05-REVIEW.md#NR-04`). Rationale: adds one disk-read + schema-validate per synthesis — behavior change.
+
 ## Out of Scope
 
 | Feature | Reason |

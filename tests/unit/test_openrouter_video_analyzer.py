@@ -44,7 +44,13 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from openai import APIError, BadRequestError
+from openai import (
+    APIError,
+    AuthenticationError,
+    BadRequestError,
+    PermissionDeniedError,
+    RateLimitError,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
@@ -404,6 +410,100 @@ def test_finish_reason_string_not_enum_guard(mock_openai, fake_video, valid_arti
     # Guarantee the tool compared with a string literal, not an enum:
     src = _SOURCE_PATH.read_text(encoding="utf-8")
     assert "Finish" + "Reason" not in src  # split to avoid tripping acceptance grep
+
+
+# ---------------------------------------------------------------------------
+# HI-01 — Auth / permission / rate-limit fast-fail (CLEAN-01)
+# ---------------------------------------------------------------------------
+
+
+def _auth_error(msg: str = "invalid api key") -> AuthenticationError:
+    req = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    resp = httpx.Response(401, request=req)
+    return AuthenticationError(msg, response=resp, body={"error": {"message": msg}})
+
+
+def _permission_error(msg: str = "model access denied") -> PermissionDeniedError:
+    req = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    resp = httpx.Response(403, request=req)
+    return PermissionDeniedError(msg, response=resp, body={"error": {"message": msg}})
+
+
+def _rate_limit_error(msg: str = "rate limit exceeded") -> RateLimitError:
+    req = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    resp = httpx.Response(429, request=req)
+    return RateLimitError(msg, response=resp, body={"error": {"message": msg}})
+
+
+def test_authentication_error_surfaces_without_retry(mock_openai, fake_video):
+    """HI-01 / CLEAN-01: 401 AuthenticationError on first call -> exactly one
+    create() invocation and no compact retry. The real root cause (bad key)
+    must not be masked by VideoAnalysisRetryExhausted.
+    """
+    mock_openai.chat.completions.create.side_effect = _auth_error()
+    t = OpenRouterVideoAnalyzer()
+    result = t.execute({"video_path": str(fake_video)})
+    assert result.success is False
+    assert mock_openai.chat.completions.create.call_count == 1
+    low = (result.error or "").lower()
+    assert "authentication" in low or "auth" in low
+    assert "retry exhausted" not in low
+
+
+def test_permission_denied_error_surfaces_without_retry(mock_openai, fake_video):
+    """HI-01 / CLEAN-01: 403 PermissionDeniedError fast-fails — same semantics
+    as 401 (bad key / model not accessible — compact retry cannot fix it).
+    """
+    mock_openai.chat.completions.create.side_effect = _permission_error()
+    t = OpenRouterVideoAnalyzer()
+    result = t.execute({"video_path": str(fake_video)})
+    assert result.success is False
+    assert mock_openai.chat.completions.create.call_count == 1
+    low = (result.error or "").lower()
+    assert "permission" in low
+    assert "retry exhausted" not in low
+
+
+def test_rate_limit_error_surfaces_without_retry(mock_openai, fake_video):
+    """HI-01 / CLEAN-01: 429 RateLimitError fast-fails — retrying through the
+    compact ladder would compound the rate-limit amplification.
+    """
+    mock_openai.chat.completions.create.side_effect = _rate_limit_error()
+    t = OpenRouterVideoAnalyzer()
+    result = t.execute({"video_path": str(fake_video)})
+    assert result.success is False
+    assert mock_openai.chat.completions.create.call_count == 1
+    low = (result.error or "").lower()
+    assert "rate" in low
+    assert "retry exhausted" not in low
+
+
+def test_generic_apierror_still_retries_compact(
+    mock_openai, fake_video, valid_artifact, openrouter_response_factories,
+):
+    """HI-01 guardrail: a generic APIError that is NOT one of the three
+    non-retriable sentinels must STILL trigger the compact-retry ladder.
+    Prevents an over-narrow fix from silently changing existing retry
+    semantics.
+
+    Sequence: first call raises a bare APIError -> code should wrap it as
+    VideoAnalysisError and go through the compact-retry branch. We feed a
+    successful response on the retry; assert call_count >= 2.
+    """
+    req = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    generic = APIError("transient server error", request=req, body=None)
+    fac = openrouter_response_factories
+    mock_openai.chat.completions.create.side_effect = [
+        generic,
+        fac["ok"](valid_artifact),
+        fac["ok"](valid_artifact),
+        fac["ok"](valid_artifact),
+    ]
+    t = OpenRouterVideoAnalyzer()
+    t.execute({"video_path": str(fake_video)})
+    assert mock_openai.chat.completions.create.call_count >= 2, (
+        "Generic APIError must still trigger the compact-retry ladder"
+    )
 
 
 # ---------------------------------------------------------------------------

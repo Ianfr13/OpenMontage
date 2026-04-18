@@ -530,9 +530,10 @@ def test_retry_exhausted_raises(
 ):
     """OR-05: every branch returns truncated -> VideoAnalysisRetryExhausted surfaced."""
     fac = openrouter_response_factories
-    # Ladder can attempt up to 4 branches (structured+full, structured+compact,
-    # embedded+full, embedded+compact). Feed enough truncated responses to exhaust all.
-    mock_openai.chat.completions.create.side_effect = [fac["truncated"]() for _ in range(6)]
+    # P3-NI-04: Ladder attempts at most 4 branches (structured+full,
+    # structured+compact, embedded+full, embedded+compact). Supply exactly 4
+    # truncated responses to exhaust the ladder — no defensive buffer needed.
+    mock_openai.chat.completions.create.side_effect = [fac["truncated"]() for _ in range(4)]
     t = OpenRouterVideoAnalyzer()
     result = t.execute({"video_path": str(fake_video)})
     assert result.success is False

@@ -791,14 +791,30 @@ def _build_chunking_metadata(
     chunks: list[tuple[Chunk, dict]],
     provider: str,
 ) -> dict:
+    """Build ``chunking_metadata`` for the merged artifact.
+
+    P4-LO-03: callers using ``merge_analyses`` directly (bypassing
+    :func:`lib.chunked_analyzer.analyze_chunked`) are expected to stamp
+    ``_cost_usd`` on every per-chunk artifact before invoking merge. If
+    the key is missing or None, we default to ``0.0`` and emit a
+    debug-level log so operators can spot upstream wiring bugs without
+    the merge itself failing. See 04-REVIEW.md#LO-03.
+    """
     per_chunk = []
     for i, (c, art) in enumerate(chunks):
+        cost_raw = art.get("_cost_usd")
+        if cost_raw is None:
+            logger.debug(
+                "merge_analyses: per-chunk artifact at index %d missing "
+                "_cost_usd; defaulting to 0.0 (cost audit will undercount)",
+                i,
+            )
         per_chunk.append(
             {
                 "index": i,
                 "start_s": float(c.start_global),
                 "end_s": float(c.end_global),
-                "cost_usd": float(art.get("_cost_usd", 0.0) or 0.0),
+                "cost_usd": float(cost_raw or 0.0),
                 "provider": str(art.get("_provider_used", provider)),
             }
         )

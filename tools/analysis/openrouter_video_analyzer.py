@@ -603,13 +603,15 @@ class OpenRouterVideoAnalyzer(BaseTool):
 
         # Client init — narrow except on openai.APIError (MD-03 pattern).
         # T-03-06: str(exc) from the SDK does not contain the raw key.
-        # Single-line constructor so grep guards match the source literally.
+        # CLEAN-04 / MD-03: OPENROUTER_BASE_URL is the single source of truth —
+        # do NOT inline the literal here. The grep anchor is the constant
+        # definition at the top of this module.
         default_headers = {
             "HTTP-Referer": "https://github.com/openmontage",
             "X-Title": "OpenMontage",
         }
         try:
-            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1", default_headers=default_headers)
+            client = OpenAI(api_key=key, base_url=OPENROUTER_BASE_URL, default_headers=default_headers)
         except APIError as exc:
             return ToolResult(
                 success=False,

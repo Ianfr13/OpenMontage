@@ -37,10 +37,13 @@
 **Success Criteria** (what must be TRUE):
   1. A test asserts `_run_once` re-raises `AuthenticationError`, `PermissionDeniedError`, and `RateLimitError` without calling `_analyze_with_fallback` (no compact retry on 401/403/429)
   2. `_build_data_url` raises on payloads above the lowered ~100MB cap; a test covers both the allow-path and the reject-path above the new cap
-  3. `_guess_mime` returns `None` for any extension outside the explicit whitelist; a unit test parametrizes `.mp4/.mov/.webm/.mkv/.avi` (allowed) vs `.exe/.txt/.bin` (rejected)
+  3. `_guess_mime` returns `None` for any extension outside the explicit whitelist; a unit test parametrizes `.mp4/.mov/.webm/.mkv/.m4v` (allowed — per CONTEXT.md locked whitelist) vs `.exe/.txt/.bin/.pdf/.avi` (rejected)
   4. `grep -n '"https://openrouter.ai/api/v1"' tools/analysis/openrouter_video_analyzer.py` returns exactly one match (the `OPENROUTER_BASE_URL` constant definition); no call-site literals remain
-  5. Full suite stays green: `pytest tests/ -q` reports 588+ passing tests with zero new failures attributable to this phase
-**Plans**: TBD
+  5. Full suite stays green: `pytest tests/ --ignore=tests/qa -q` reports at least the 621 pre-Phase-8 baseline passing + new Phase-8 tests, with 13 skipped and 3 pre-existing fc-list failures unchanged (the fc-list failures are pre-existing and documented in STATE.md)
+**Plans:** 2 plans
+Plans:
+- [ ] 08-01-PLAN.md — CLEAN-01: sentinel exception classes + narrow except for 401/403/429 + 4 unit tests proving fast-fail
+- [ ] 08-02-PLAN.md — CLEAN-02/03/04: 100MB cap + explicit MIME whitelist + OPENROUTER_BASE_URL dedup + corresponding tests
 
 ### Phase 9: Chunked Merge Correctness
 **Goal**: Make the chunked analyzer + merger produce artifacts that pass canonical schema validation without hardcoded fallback cheats and with positional hook/CTA rules honored.

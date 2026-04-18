@@ -511,6 +511,13 @@ class OpenRouterVideoAnalyzer(BaseTool):
             except VideoAnalysisError as exc:
                 if isinstance(exc, (VideoAnalysisAuthError, VideoAnalysisRateLimitError)):
                     raise  # HI-01 — fast-fail bypasses compact retry
+                # P3-LO-02: asymmetry note — truncation on BOTH structured
+                # attempts means the model cannot fit the output; the prompt-
+                # embedded ladder can't shrink the response and would double
+                # the credit burn. Stop here. The BadRequest branch above is
+                # different: that signals "model rejects json_schema", which
+                # prompt-embedded is built to address, so it DOES fall
+                # through to the embedded ladder. See 03-REVIEW.md#LO-02.
                 raise VideoAnalysisRetryExhausted(
                     f"Analysis failed after structured+compact retry: {exc}"
                 ) from exc

@@ -66,6 +66,15 @@ _MAX_ATTEMPTS = 2
 #: Fields the LLM is permitted to overwrite on existing stages. Structural
 #: keys (name, skill, agent, produces, required_artifacts_in, ...) are NEVER
 #: touched — merging them would cross the SYNTH-03 boundary.
+#:
+#: P5-NR-01: the merge is a **one-way door** — the LLM can *add* values
+#: (replace a base field with non-empty output) but cannot *clear* a
+#: base field by returning ``[]`` / ``""`` / ``None``. The ``if value:``
+#: truthy check in ``_merge_stage_details`` drops empty outputs so an
+#: LLM hallucinated ``tools_available: []`` cannot erase a base
+#: manifest's curated tool list. If a future requirement ever needs
+#: "clear this field via LLM," the merge layer has to change shape —
+#: see 05-REVIEW.md#NR-01.
 FILLABLE_FIELDS: tuple[str, ...] = (
     "tools_available",
     "review_focus",

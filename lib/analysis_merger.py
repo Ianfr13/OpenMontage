@@ -76,6 +76,15 @@ def _weighted_avg(pairs: list[tuple[float, float]]) -> float:
     Returns 0.0 if ``pairs`` is empty or total weight is zero (no
     division-by-zero panic; callers can substitute None if they prefer
     omit semantics).
+
+    P4-LO-01: ``0.0`` returned on empty-input is indistinguishable from
+    a genuine zero-weight average of real data. Callers downstream
+    (editing_pacing fields, audio fields, etc.) rely on the fact that
+    chunk weights are always positive (``end_global - start_global``),
+    so in practice "0.0" means "all zero-weighted" which never occurs
+    in a healthy chunk list. If a caller ever passes empty pairs or
+    all-None values, "0.0" == "no data" is an acceptable downstream
+    signal. See 04-REVIEW.md#LO-01.
     """
     total_w = 0.0
     acc = 0.0

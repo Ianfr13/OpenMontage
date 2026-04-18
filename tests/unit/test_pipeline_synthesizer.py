@@ -1,18 +1,30 @@
-"""Unit tests for lib/pipeline_synthesizer.py (Phase 5 Plan 05-01).
+"""Unit tests for lib/pipeline_synthesizer.py (Phase 5 Plans 05-01 + 05-02).
 
-Covers SYNTH-01, SYNTH-02, SYNTH-04, SYNTH-05, SYNTH-06 via 12 behavior tests:
-  1. test_module_shape               — module-level functions, no locally-defined class
-  2. test_canonical_sha256_deterministic — key-order independent, reproducible hex
-  3. test_matcher_exact_pacing       — slow_contemplative + stages=8 → cinematic
-  4. test_matcher_close_up_heavy     — talking_head>0.5 → talking-head / avatar-spokesperson
-  5. test_matcher_static_heavy       — static_image>0.5 → animated-explainer / screen-demo
-  6. test_deterministic_ties         — tie broken alphabetically
-  7. test_slug_idempotent            — same analysis → same slug; format {base}-{hash[:8]}
-  8. test_staging_only_write         — writes under _staging/, never under pipeline_defs/ root
-  9. test_provenance_header          — first 5 lines are # synthesized from ... checksum/base/...
- 10. test_collision_bytes_equal_noop — second call byte-identical → reuses path
- 11. test_collision_bytes_differ_v2  — pre-existing different file → -v2 suffix
- 12. test_mode_parameter_accepted    — template/replica OK, other raises ValueError
+Covers SYNTH-01, SYNTH-02, SYNTH-04, SYNTH-05, SYNTH-06 + run-record emission
+via 19 behavior tests (P5-NR-02: count was stale at 12 — refreshed 11-02):
+
+  Plan 05-01 (12 tests):
+   1. test_module_shape               — module-level functions, no locally-defined class
+   2. test_canonical_sha256_deterministic — key-order independent, reproducible hex
+   3. test_matcher_exact_pacing       — slow_contemplative + stages=8 → cinematic
+   4. test_matcher_close_up_heavy     — talking_head>0.5 → talking-head / avatar-spokesperson
+   5. test_matcher_static_heavy       — static_image>0.5 → animated-explainer / screen-demo
+   6. test_deterministic_ties         — tie broken alphabetically
+   7. test_slug_idempotent            — same analysis → same slug; format {base}-{hash[:8]}
+   8. test_staging_only_write         — writes under _staging/, never under pipeline_defs/ root
+   9. test_provenance_header          — first 5 lines are # synthesized from ... checksum/base/...
+  10. test_collision_bytes_equal_noop — second call byte-identical → reuses path
+  11. test_collision_bytes_differ_v2  — pre-existing different file → -v2 suffix
+  12. test_mode_parameter_accepted    — template/replica OK, other raises ValueError
+
+  Plan 05-02 (7 tests, run-record emission):
+  13. test_diff_against_base_empty_for_verbatim
+  14. test_diff_is_unified_format_when_nonempty
+  15. test_validation_status_valid
+  16. test_validation_status_invalid
+  17. test_no_pending_status_emitted
+  18. test_version_const
+  19. test_staging_path_under_pipeline_defs
 """
 
 from __future__ import annotations

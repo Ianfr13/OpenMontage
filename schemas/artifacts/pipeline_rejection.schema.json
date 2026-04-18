@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openmontage/artifacts/pipeline_rejection",
+  "title": "pipeline_rejection",
+  "description": "Pipeline rejection record — emitted by lib/pipeline_synthesizer.py::reject_synthesis when a staged pipeline is discarded (user rejected, meta-skill abandoned the staging). Replaces the v2.0 pattern of re-emitting a pipeline_synthesis record with validation_status='invalid' (Pitfall 2 hack — rejection is not a validation failure). CLEAN-09 / v2.0 Phase 5 REVIEW MR-02.",
+  "type": "object",
+  "required": [
+    "version",
+    "rejected_slug",
+    "staging_path",
+    "created_at"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "rejected_slug": {
+      "type": "string",
+      "description": "Slug of the staged pipeline that was rejected — filename stem (no .yaml). The file under _staging/<slug>.yaml has been unlinked by the time this record is emitted."
+    },
+    "staging_path": {
+      "type": "string",
+      "description": "Repo-relative path where the staged YAML used to live (pipeline_defs/_staging/<slug>.yaml). Included for audit trail — the file itself is gone."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Optional free-text human-provided reason for rejection (not recorded by this version; meta-skill may forward it in a future phase)."
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO-8601 timestamp of the rejection."
+    }
+  }
+}

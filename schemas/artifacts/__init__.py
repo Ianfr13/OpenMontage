@@ -28,6 +28,8 @@ ARTIFACT_NAMES = [
     "video_analysis_brief",
     "video_analysis",
     "pipeline_synthesis",
+    "pipeline_acceptance",
+    "pipeline_rejection",
 ]
 
 

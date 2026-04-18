@@ -57,8 +57,8 @@ Plans:
   5. Full suite stays green: `pytest tests/ -q` reports 588+ passing tests after this phase
 **Plans:** 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — CLEAN-06: MergeConsensusError sentinel + remove 8 hardcoded fallback defaults in analysis_merger
-- [ ] 09-02-PLAN.md — CLEAN-05 + CLEAN-07: provider enum validation + position-preserving hook/CTA in continue mode
+- [x] 09-01-PLAN.md — CLEAN-06: MergeConsensusError sentinel + remove 8 hardcoded fallback defaults in analysis_merger
+- [x] 09-02-PLAN.md — CLEAN-05 + CLEAN-07: provider enum validation + position-preserving hook/CTA in continue mode
 
 ### Phase 10: Synthesizer Record Validity
 **Goal**: Harden synthesizer acceptance/rejection so slug/path inputs are validated defensively and the emitted records no longer abuse `pipeline_synthesis_run` with synthetic sentinel values.

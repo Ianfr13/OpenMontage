@@ -291,3 +291,59 @@ def test_no_tools_available_is_ok(valid_manifest):
     for stage_name in (first["name"], second["name"]):
         bad = [i for i in issues if stage_name in i and "tool" in i.lower()]
         assert bad == [], f"stage {stage_name!r} should produce no tool issues; got: {bad}"
+
+
+# ---------------------------------------------------------------------------
+# DRIFT-01 regression: cinematic.yaml passes semantic validation
+# ---------------------------------------------------------------------------
+
+
+def test_cinematic_manifest_has_no_unregistered_tools():
+    """DRIFT-01 regression: cinematic.yaml research stage must not list
+    ``web_search`` (or any other tool absent from the registry).
+
+    Historically the ``research`` stage listed ``web_search``, which is an
+    agent intrinsic capability — NOT a ``BaseTool`` in ``tools.tool_registry``.
+    The semantic validator flagged it on every synthesizer run. Phase 11-01
+    removed the reference; this test prevents regression.
+
+    See: ``.planning/milestones/v2.0-phases/05-synthesizer/deferred-items.md``
+    and ``.planning/phases/11-drift-hygiene/11-CONTEXT.md``.
+    """
+    from lib.pipeline_loader import load_pipeline
+    from lib.pipeline_synthesizer import validate_synthesized_pipeline
+
+    manifest = load_pipeline("cinematic")
+    issues = validate_synthesized_pipeline(manifest)
+
+    assert issues == [], (
+        f"cinematic.yaml semantic validation must be clean, got: {issues}"
+    )
+
+
+def test_no_pipeline_references_web_search_tool():
+    """DRIFT-01 regression across ALL pipelines: no manifest in
+    ``pipeline_defs/`` may reference ``web_search`` in a ``tools_available``
+    list. ``web_search`` is an agent intrinsic, not a registered BaseTool;
+    using it in ``tools_available`` triggers semantic validation failures.
+
+    This catches re-introduction of the drift in cinematic.yaml AND prevents
+    copy-paste regression in any future pipeline manifest.
+    """
+    from pathlib import Path
+
+    import yaml
+
+    defs_dir = Path(__file__).resolve().parents[2] / "pipeline_defs"
+    offenders: list[str] = []
+    for path in sorted(defs_dir.glob("*.yaml")):
+        manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for stage in manifest.get("stages", []) or []:
+            tools = stage.get("tools_available") or []
+            if "web_search" in tools:
+                offenders.append(f"{path.name}:{stage.get('name', '?')}")
+
+    assert not offenders, (
+        f"web_search must not appear in any pipeline_defs tools_available "
+        f"list (agent intrinsic, not a BaseTool). Offenders: {offenders}"
+    )

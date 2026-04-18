@@ -54,6 +54,7 @@ from ruamel.yaml import YAML
 
 from lib.analysis_errors import InvalidPipelineSlug
 from lib.pipeline_loader import PIPELINE_DEFS_DIR, list_pipelines, load_pipeline
+from schemas.artifacts import validate_artifact
 
 
 # ---------------------------------------------------------------------------
@@ -631,7 +632,7 @@ def accept_synthesis(slug: str) -> tuple[Path, dict[str, Any]]:
     SYNTH-10 contract — this is the ONLY authorized write into
     ``pipeline_defs/``. Moves ``pipeline_defs/_staging/<slug>.yaml`` to
     ``pipeline_defs/<slug>.yaml`` and emits a schema-validated
-    ``pipeline_synthesis`` run record.
+    ``pipeline_acceptance`` record.
 
     Post-promotion the promoted YAML is re-validated (``skill:`` paths
     exist, every ``tools_available`` entry is registered). The record's
@@ -639,13 +640,27 @@ def accept_synthesis(slug: str) -> tuple[Path, dict[str, Any]]:
     ``"invalid"`` on any residual issue (the move still happens; the
     caller decides whether to revert based on the record).
 
+    Schema note (CLEAN-09 / v2.0 Phase 5 REVIEW MR-02): this record
+    validates against ``pipeline_acceptance.schema.json``, NOT
+    ``pipeline_synthesis.schema.json``. The legacy pipeline_synthesis
+    schema still governs the pre-approval synthesis event emitted by
+    :func:`synthesize_pipeline`; post-accept events are their own
+    schema, carrying only fields the promotion event actually has
+    (``promoted_slug``, ``promoted_path``, ``validation_status``,
+    ``created_at``). Audit consumers needing the matcher's
+    ``match_score`` / ``base_pipeline`` / ``source_analysis_checksum``
+    must correlate by ``promoted_slug`` with the earlier
+    pipeline_synthesis record for the same synthesis run.
+
     Args:
         slug: Filename stem under ``_staging/`` (no ``.yaml`` extension).
 
     Returns:
         ``(promoted_path, record)`` — ``promoted_path`` is the new path
         under ``pipeline_defs/``; ``record`` validates against
-        ``schemas/artifacts/pipeline_synthesis.schema.json``.
+        ``schemas/artifacts/pipeline_acceptance.schema.json``. The
+        tuple-return shape is preserved from the v2.0 contract (STATE.md
+        decision 05-03); only the record's schema conformance changes.
 
     Raises:
         InvalidPipelineSlug: ``slug`` fails the defensive regex or resolves
@@ -673,8 +688,9 @@ def accept_synthesis(slug: str) -> tuple[Path, dict[str, Any]]:
     shutil.move(str(src), str(dst))
 
     # Re-validate the promoted manifest; record describes the code-verified
-    # state, NOT user sentiment (Pitfall 2 — schema enum is valid/invalid/
-    # pending).
+    # state, NOT user sentiment. Rejection is no longer encoded as
+    # ``validation_status="invalid"`` — it has its own schema now
+    # (pipeline_rejection); see :func:`reject_synthesis`.
     issues: list[str] = []
     try:
         promoted_manifest = load_pipeline(slug)
@@ -688,34 +704,35 @@ def accept_synthesis(slug: str) -> tuple[Path, dict[str, Any]]:
 
     record: dict[str, Any] = {
         "version": "1.0",
-        "base_pipeline": slug,
-        "match_score": 0.0,
-        "mode": "template",
-        "staging_path": _relative_staging_path(src),
-        "diff_against_base": "",
+        "promoted_slug": slug,
+        "promoted_path": _relative_staging_path(dst),
         "validation_status": status,
-        "source_analysis_checksum": "post-accept",
-        "provider_used": "gemini",
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    jsonschema.validate(instance=record, schema=_load_synthesis_schema())
+    if issues:
+        record["validation_issues"] = issues
+    validate_artifact("pipeline_acceptance", record)
     return dst, record
 
 
 def reject_synthesis(slug: str) -> dict[str, Any]:
     """Delete a staged pipeline YAML and emit a rejection record.
 
-    The returned record carries ``validation_status="invalid"`` — the
-    schema enum has no ``"rejected"`` value (Pitfall 2 in 05-RESEARCH.md);
-    user rejection is encoded as the invalid sentinel. The meta skill
-    layer (Phase 6) is responsible for preserving human context (reason
-    for rejection) alongside this record.
+    Schema note (CLEAN-09 / v2.0 Phase 5 REVIEW MR-02): this record
+    validates against ``pipeline_rejection.schema.json``. The v2.0
+    pattern of re-emitting a ``pipeline_synthesis`` record with
+    ``validation_status="invalid"`` (Pitfall 2 hack — rejection is not a
+    validation failure) has been replaced with a dedicated schema that
+    carries only fields a rejection event actually has
+    (``rejected_slug``, ``staging_path``, ``created_at``; optional
+    ``reason``). The meta-skill layer (Phase 6) may forward a
+    user-provided reason into the ``reason`` field in a future phase.
 
     Args:
         slug: Filename stem under ``_staging/``.
 
     Returns:
-        Schema-validated ``pipeline_synthesis`` record.
+        Schema-validated ``pipeline_rejection`` record.
 
     Raises:
         InvalidPipelineSlug: ``slug`` fails the defensive regex or resolves
@@ -733,17 +750,11 @@ def reject_synthesis(slug: str) -> dict[str, Any]:
 
     record: dict[str, Any] = {
         "version": "1.0",
-        "base_pipeline": slug,
-        "match_score": 0.0,
-        "mode": "template",
+        "rejected_slug": slug,
         "staging_path": rel_path,
-        "diff_against_base": "",
-        "validation_status": "invalid",
-        "source_analysis_checksum": "post-reject",
-        "provider_used": "gemini",
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    jsonschema.validate(instance=record, schema=_load_synthesis_schema())
+    validate_artifact("pipeline_rejection", record)
     return record
 
 

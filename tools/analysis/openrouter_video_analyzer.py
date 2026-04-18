@@ -79,6 +79,10 @@ DEFAULT_MODEL = "google/gemini-3.1-pro-preview"
 DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024           # 20 MB (RESEARCH Assumption A1)
 HARD_MAX_UPLOAD_BYTES = 100 * 1024 * 1024             # 100 MB — inline-base64 ceiling; chunking handles larger inputs (Phase 4)
 MIN_MAX_UPLOAD_BYTES = 1
+# P3-NI-05: word-count ceiling for compact-depth prompt; referenced in
+# _build_prompt so the prompt and any future docstring / skill alignment
+# stay in sync through one constant. See 03-REVIEW.md#NI-05.
+COMPACT_FIELD_WORD_LIMIT = 30
 SUPPORTED_MIMES = frozenset({
     "video/mp4",
     "video/quicktime",    # .mov
@@ -292,7 +296,7 @@ class OpenRouterVideoAnalyzer(BaseTool):
             )
         depth_directive = (
             "Use terse but complete phrasing; keep descriptive fields under "
-            "30 words each."
+            f"{COMPACT_FIELD_WORD_LIMIT} words each."
             if depth == "compact"
             else "Be thorough across all 4 dimensions."
         )

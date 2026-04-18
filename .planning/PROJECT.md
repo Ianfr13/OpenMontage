@@ -14,15 +14,13 @@ Um agente que lê instruções (pipeline manifest → stage director skill → L
 
 **v2.0 Reference Synthesis shipped (2026-04-17)** — 7 phases · 23 plans · 588 tests · all 47 requirements satisfied (46 complete + 1 partial SKILL-03 human-UAT by design). See `.planning/milestones/v2.0-ROADMAP.md` for the archive. The reference-synthesis meta skill (`skills/meta/reference-synthesis.md`) is the live entry point for turning a reference video into a reusable pipeline.
 
-## Next Milestone Goals
+## Current Milestone: v2.1 Cleanup & Hardening
 
-_TBD — start with `/gsd-new-milestone` to define requirements._
+**Goal:** Absorver tech debt diferido do v2.0 — fixes HIGH/MEDIUM do code review, drift pré-existente em `cinematic.yaml`, e gates human-UAT — sem adicionar feature nova.
 
-Candidate themes from v2.0 deferred items:
-- v2.1 cleanup (Phase 2 code-review nits LO/NI, cinematic.yaml web_search drift, SKILL-03 real-video review with fixtures)
-- Additional providers (Claude video input when shipped, local/offline analyzer)
-- SYNTH2-* synthesizer quality improvements (LLM-scored match confidence, interactive diff UI, auto-regenerate refactor)
-- OBS-* observability (cross-chunk cost tracking, analysis cache by checksum)
+**Target features:**
+- Wave 1: 1 HIGH + 8 MEDIUM code-review fixes (Phases 3, 4, 5 do v2.0)
+- Wave 2: `cinematic.yaml` `web_search` drift, 30 LOW/NIT items, SKILL-03 human-UAT real-video review com fixtures
 
 ---
 
@@ -150,4 +148,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-17 after shipping milestone v2.0 Reference Synthesis*
+*Last updated: 2026-04-17 — started milestone v2.1 Cleanup & Hardening*

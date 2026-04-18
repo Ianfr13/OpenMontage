@@ -802,3 +802,130 @@ class TestSchemaValidation:
             merged["visual_style"]["aspect_ratio"]
             == chunks[0][1]["visual_style"]["aspect_ratio"]
         )
+
+
+# ----------------------------------------------------------------------
+# CLEAN-06 / MR-02: MergeConsensusError replaces silent fallback defaults
+# ----------------------------------------------------------------------
+
+
+class TestMergeConsensusError:
+    """Each required field that previously fell back to a hardcoded default
+    (`vote or dims[0].get(field, DEFAULT)` at lines 295, 394, 400, 538, 551,
+    602, 637, 655 in v2.0) now raises MergeConsensusError when every chunk
+    is missing / None.
+
+    Happy paths are covered by the existing test classes above — this class
+    focuses on the negative path that the old code silently masked.
+    """
+
+    def test_pacing_style_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"editing_pacing": {"pacing_style": None}},
+                {"editing_pacing": {"pacing_style": None}},
+                {"editing_pacing": {"pacing_style": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"editing_pacing\.pacing_style"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_narration_style_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"audio": {"narration_style": None}},
+                {"audio": {"narration_style": None}},
+                {"audio": {"narration_style": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"audio\.narration_style"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_voice_music_mix_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"audio": {"voice_music_mix": None}},
+                {"audio": {"voice_music_mix": None}},
+                {"audio": {"voice_music_mix": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"audio\.voice_music_mix"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_production_quality_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"visual_style": {"production_quality": None}},
+                {"visual_style": {"production_quality": None}},
+                {"visual_style": {"production_quality": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"visual_style\.production_quality"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_aspect_ratio_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"visual_style": {"aspect_ratio": None}},
+                {"visual_style": {"aspect_ratio": None}},
+                {"visual_style": {"aspect_ratio": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"visual_style\.aspect_ratio"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_narrative_arc_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"narrative": {"narrative_arc": None}},
+                {"narrative": {"narrative_arc": None}},
+                {"narrative": {"narrative_arc": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"narrative\.narrative_arc"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_target_platform_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"narrative": {"target_platform": None}},
+                {"narrative": {"target_platform": None}},
+                {"narrative": {"target_platform": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"narrative\.target_platform"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_content_tone_missing_raises(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"narrative": {"content_tone": None}},
+                {"narrative": {"content_tone": None}},
+                {"narrative": {"content_tone": None}},
+            ],
+        )
+        from lib.analysis_errors import MergeConsensusError
+        with pytest.raises(MergeConsensusError, match=r"narrative\.content_tone"):
+            merge_analyses(chunks, provider="gemini")
+
+    def test_inherits_video_analysis_error(self):
+        """Backward-compat guard: existing `except VideoAnalysisError` handlers
+        still catch MergeConsensusError. Removing the inheritance would break
+        callers that broadly catch the base class."""
+        from lib.analysis_errors import MergeConsensusError, VideoAnalysisError
+        assert issubclass(MergeConsensusError, VideoAnalysisError)

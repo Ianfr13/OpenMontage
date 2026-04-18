@@ -466,10 +466,24 @@ def _dump_manifest_body(manifest: dict[str, Any]) -> str:
     return buf.getvalue()
 
 
+#: P5-LR-05: only the provenance-header timestamp line matches this pattern;
+#: narrower than the prior ``line.startswith("# at:")`` so a YAML comment like
+#: ``# at: the time of writing, ...`` in a hand-authored manifest survives the
+#: byte-equality comparison. See 05-REVIEW.md#LR-05.
+_AT_LINE_RE = re.compile(r"^# at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+
+
 def _body_without_timestamp(text: str) -> str:
-    """Strip the ``# at: ...`` line so byte-equality compares can ignore timestamps."""
+    """Strip the ``# at: <ISO-8601>`` provenance line so byte-equality compares
+    can ignore timestamp drift.
+
+    P5-LR-05: scoped to the ISO-8601 timestamp pattern emitted by
+    ``_build_header`` (``# at: YYYY-MM-DDTHH:MM:SS...``) rather than any
+    line starting with ``# at:``. Prevents accidentally eating hand-
+    authored comments that happen to begin with that prefix.
+    """
     return "\n".join(
-        line for line in text.splitlines() if not line.startswith("# at:")
+        line for line in text.splitlines() if not _AT_LINE_RE.match(line)
     )
 
 

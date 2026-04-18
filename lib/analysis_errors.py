@@ -76,3 +76,19 @@ class VideoAnalysisRateLimitError(VideoAnalysisError):
 
     See Phase 8 CLEAN-01 / v2.0 Phase 3 REVIEW HI-01.
     """
+
+
+class MergeConsensusError(VideoAnalysisError):
+    """Raised by `lib.analysis_merger` when consensus on a required field
+    cannot be derived from any chunk (both the weighted-majority vote AND
+    the first-chunk fallback yielded None).
+
+    Replaces the v2.0 silent default-fallback pattern
+    (`vote or dims[0].get(field, DEFAULT)`) which injected plausible-looking
+    values the source video never actually had — masking upstream provider
+    bugs and violating the single-validation-gate guarantee.
+
+    See Phase 9 CLEAN-06 / v2.0 Phase 4 REVIEW MR-02. Subclasses
+    `VideoAnalysisError` so existing callers that do `except VideoAnalysisError`
+    continue to catch it.
+    """

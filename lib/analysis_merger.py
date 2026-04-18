@@ -56,6 +56,7 @@ import logging
 from collections import Counter
 from typing import Any, Callable
 
+from lib.analysis_errors import MergeConsensusError
 from lib.video_chunker import Chunk
 from schemas.artifacts import validate_artifact
 
@@ -288,11 +289,18 @@ def _merge_editing_pacing(
     if longest_vals:
         merged["longest_shot_seconds"] = float(max(longest_vals))
 
-    # Weighted majority (required)
+    # Weighted majority (required) — CLEAN-06: no hardcoded default fallback
     pacing = _weighted_majority(
         _pair_with_weights([d.get("pacing_style") for d in dims], weights)
     )
-    merged["pacing_style"] = pacing or dims[0].get("pacing_style", "steady_educational")
+    first_pacing = dims[0].get("pacing_style")
+    if pacing is None and first_pacing is None:
+        raise MergeConsensusError(
+            "editing_pacing.pacing_style: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["pacing_style"] = pacing if pacing is not None else first_pacing
 
     # Distributions: per-key weighted avg + renormalize
     shot_dist_keys: set[str] = set()
@@ -387,17 +395,31 @@ def _merge_audio(
     merged["has_music"] = any(bool(d.get("has_music")) for d in dims)
     merged["has_sfx"] = any(bool(d.get("has_sfx")) for d in dims)
 
-    # narration_style (required) — weighted majority
+    # narration_style (required) — weighted majority; CLEAN-06 no hardcoded default
     nar_style = _weighted_majority(
         _pair_with_weights([d.get("narration_style") for d in dims], weights)
     )
-    merged["narration_style"] = nar_style or dims[0].get("narration_style", "none")
+    first_nar_style = dims[0].get("narration_style")
+    if nar_style is None and first_nar_style is None:
+        raise MergeConsensusError(
+            "audio.narration_style: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["narration_style"] = nar_style if nar_style is not None else first_nar_style
 
-    # voice_music_mix (required)
+    # voice_music_mix (required) — CLEAN-06 no hardcoded default
     vmm = _weighted_majority(
         _pair_with_weights([d.get("voice_music_mix") for d in dims], weights)
     )
-    merged["voice_music_mix"] = vmm or dims[0].get("voice_music_mix", "narration_dominant")
+    first_vmm = dims[0].get("voice_music_mix")
+    if vmm is None and first_vmm is None:
+        raise MergeConsensusError(
+            "audio.voice_music_mix: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["voice_music_mix"] = vmm if vmm is not None else first_vmm
 
     # speaker_count — max
     sc_vals = [d.get("speaker_count") for d in dims if d.get("speaker_count") is not None]
@@ -531,11 +553,18 @@ def _merge_visual_style(
         if vote is not None:
             merged[field] = vote
 
-    # production_quality (required)
+    # production_quality (required) — CLEAN-06 no hardcoded default
     pq = _weighted_majority(
         _pair_with_weights([d.get("production_quality") for d in dims], weights)
     )
-    merged["production_quality"] = pq or dims[0].get("production_quality", "professional")
+    first_pq = dims[0].get("production_quality")
+    if pq is None and first_pq is None:
+        raise MergeConsensusError(
+            "visual_style.production_quality: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["production_quality"] = pq if pq is not None else first_pq
 
     # aspect_ratio (required) — first chunk wins; log disagreement
     first_ratio = dims[0].get("aspect_ratio")
@@ -548,7 +577,13 @@ def _merge_visual_style(
             first_ratio,
             sorted(x for x in other_ratios if x != first_ratio),
         )
-    merged["aspect_ratio"] = first_ratio or "16:9"
+    # CLEAN-06 no hardcoded default
+    if first_ratio is None:
+        raise MergeConsensusError(
+            "visual_style.aspect_ratio: chunks[0].aspect_ratio is None "
+            "(single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["aspect_ratio"] = first_ratio
 
     # typography_style — first-chunk prose
     ts = dims[0].get("typography_style")
@@ -595,11 +630,18 @@ def _merge_narrative(
     if first.get("hook_duration_seconds") is not None:
         merged["hook_duration_seconds"] = float(first["hook_duration_seconds"])
 
-    # narrative_arc — weighted majority vote
+    # narrative_arc — weighted majority vote; CLEAN-06 no hardcoded default
     arc = _weighted_majority(
         _pair_with_weights([d.get("narrative_arc") for d in dims], weights)
     )
-    merged["narrative_arc"] = arc or first.get("narrative_arc", "linear")
+    first_arc = first.get("narrative_arc")
+    if arc is None and first_arc is None:
+        raise MergeConsensusError(
+            "narrative.narrative_arc: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["narrative_arc"] = arc if arc is not None else first_arc
 
     # section_count — sum
     merged["section_count"] = int(
@@ -629,12 +671,20 @@ def _merge_narrative(
     if last.get("cta_duration_seconds") is not None:
         merged["cta_duration_seconds"] = float(last["cta_duration_seconds"])
 
-    # target_platform (required) — first non-null
+    # target_platform (required) — first non-null; CLEAN-06 no hardcoded default
     tp = next(
         (d.get("target_platform") for d in dims if d.get("target_platform") is not None),
         None,
     )
-    merged["target_platform"] = tp or first.get("target_platform", "unknown")
+    first_tp = first.get("target_platform")
+    if tp is None and first_tp is None:
+        raise MergeConsensusError(
+            "narrative.target_platform: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields; "
+            "note: the string literal is schema-valid but would be a merger-invented value)"
+        )
+    merged["target_platform"] = tp if tp is not None else first_tp
 
     # target_duration_seconds (required) — SUM of chunk durations
     merged["target_duration_seconds"] = float(
@@ -648,11 +698,18 @@ def _merge_narrative(
     if info is not None:
         merged["information_density"] = info
 
-    # content_tone (required) — weighted majority
+    # content_tone (required) — weighted majority; CLEAN-06 no hardcoded default
     tone = _weighted_majority(
         _pair_with_weights([d.get("content_tone") for d in dims], weights)
     )
-    merged["content_tone"] = tone or first.get("content_tone", "educational")
+    first_tone = first.get("content_tone")
+    if tone is None and first_tone is None:
+        raise MergeConsensusError(
+            "narrative.content_tone: no chunk provided a value "
+            "(consensus and first-chunk fallback both None — "
+            "single-validation-gate: merger does not fabricate required fields)"
+        )
+    merged["content_tone"] = tone if tone is not None else first_tone
 
     # paragraph_pattern — concat with [chunk N/M] markers
     n = len(chunks)

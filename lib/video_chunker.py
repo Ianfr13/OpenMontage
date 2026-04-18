@@ -59,6 +59,11 @@ Chunk = namedtuple("Chunk", ["start_global", "end_global", "local_path"])
 _FFMPEG_TIMEOUT_SECONDS = 1800
 _FFPROBE_TIMEOUT_SECONDS = 30
 
+# P4-NI-02: single source of truth for the default chunk boundary.
+# Referenced by split_video's default arg AND lib/chunked_analyzer's
+# estimate_chunked_cost default. Keep in sync with CHUNK-02 (5 min).
+_MAX_CHUNK_SECONDS_DEFAULT: float = 300.0
+
 
 def _probe_duration_seconds(video_path: Path) -> float:
     """Return the media's duration in seconds via ``ffprobe``.
@@ -109,7 +114,7 @@ def _probe_duration_seconds(video_path: Path) -> float:
 
 def split_video(
     video_path: Union[str, Path],
-    max_chunk_seconds: float = 300.0,
+    max_chunk_seconds: float = _MAX_CHUNK_SECONDS_DEFAULT,
 ) -> list[Chunk]:
     """Split ``video_path`` into ≤ ``max_chunk_seconds`` chunks via FFmpeg.
 

@@ -77,7 +77,12 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from lib.analysis_merger import merge_analyses
-from lib.video_chunker import Chunk, cleanup_chunks, split_video
+from lib.video_chunker import (
+    _MAX_CHUNK_SECONDS_DEFAULT,
+    Chunk,
+    cleanup_chunks,
+    split_video,
+)
 from tools.base_tool import ToolResult
 
 logger = logging.getLogger(__name__)
@@ -185,7 +190,7 @@ def estimate_chunked_cost(
     provider: str,
     duration_seconds: float,
     model: str,
-    max_chunk_seconds: float = 300.0,
+    max_chunk_seconds: float = _MAX_CHUNK_SECONDS_DEFAULT,
 ) -> dict:
     """Rough pre-run cost estimate with ±30% uncertainty (RESEARCH § Code Examples).
 

@@ -289,13 +289,25 @@ def _canonical_sha256(artifact: dict[str, Any]) -> str:
 
     Canonical form: ``sort_keys=True, separators=(',', ':'), ensure_ascii=False``
     — identical to the project's existing checksum convention.
+
+    P5-LR-01: wraps ``json.dumps`` in a try/except so a non-JSON type
+    (``datetime``, ``Path``, ``bytes``, ``set`` …) smuggled into the
+    artifact produces a helpful ``ValueError`` pointing at the root
+    cause rather than a bare ``TypeError`` from the encoder. See
+    05-REVIEW.md#LR-01.
     """
-    canonical = json.dumps(
-        artifact,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    )
+    try:
+        canonical = json.dumps(
+            artifact,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+    except TypeError as exc:
+        raise ValueError(
+            "analysis is not JSON-serializable; pass the deserialized dict "
+            "from a video_analysis artifact"
+        ) from exc
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 

@@ -128,19 +128,21 @@ def _stage_file(defs_dir: Path, slug: str) -> Path:
 
 
 def test_accept_moves_file(isolated_defs):
-    _stage_file(isolated_defs, "foo")
-    assert (isolated_defs / "_staging" / "foo.yaml").exists()
-    assert not (isolated_defs / "foo.yaml").exists()
+    # Canonical _build_slug shape (base-hex8) — ≥8 chars, lowercase, hyphen-safe
+    # (CLEAN-08 slug regex).
+    _stage_file(isolated_defs, "foo-abcd1234")
+    assert (isolated_defs / "_staging" / "foo-abcd1234.yaml").exists()
+    assert not (isolated_defs / "foo-abcd1234.yaml").exists()
 
     from lib.pipeline_synthesizer import accept_synthesis
 
-    promoted, _record = accept_synthesis("foo")
+    promoted, _record = accept_synthesis("foo-abcd1234")
 
-    assert not (isolated_defs / "_staging" / "foo.yaml").exists(), (
+    assert not (isolated_defs / "_staging" / "foo-abcd1234.yaml").exists(), (
         "staging file should be moved, not copied"
     )
-    assert (isolated_defs / "foo.yaml").exists()
-    assert promoted == (isolated_defs / "foo.yaml")
+    assert (isolated_defs / "foo-abcd1234.yaml").exists()
+    assert promoted == (isolated_defs / "foo-abcd1234.yaml")
 
 
 # ---------------------------------------------------------------------------
@@ -149,11 +151,11 @@ def test_accept_moves_file(isolated_defs):
 
 
 def test_accept_returns_path_and_record(isolated_defs):
-    _stage_file(isolated_defs, "foo")
+    _stage_file(isolated_defs, "foo-abcd1234")
 
     from lib.pipeline_synthesizer import accept_synthesis
 
-    result = accept_synthesis("foo")
+    result = accept_synthesis("foo-abcd1234")
     assert isinstance(result, tuple)
     assert len(result) == 2
     path, record = result
@@ -196,16 +198,16 @@ def test_accept_missing_staging_raises(isolated_defs):
 
 
 def test_reject_deletes_staging(isolated_defs):
-    staged = _stage_file(isolated_defs, "foo")
+    staged = _stage_file(isolated_defs, "foo-abcd1234")
     assert staged.exists()
 
     from lib.pipeline_synthesizer import reject_synthesis
 
-    record = reject_synthesis("foo")
+    record = reject_synthesis("foo-abcd1234")
 
     assert not staged.exists()
-    # pipeline_defs/foo.yaml was never created
-    assert not (isolated_defs / "foo.yaml").exists()
+    # pipeline_defs/foo-abcd1234.yaml was never created
+    assert not (isolated_defs / "foo-abcd1234.yaml").exists()
     assert isinstance(record, dict)
 
 
@@ -227,12 +229,12 @@ def test_reject_missing_staging_raises(isolated_defs):
 
 
 def test_accept_record_schema_valid(isolated_defs):
-    _stage_file(isolated_defs, "foo")
+    _stage_file(isolated_defs, "foo-abcd1234")
 
     from lib.pipeline_synthesizer import accept_synthesis
     from schemas.artifacts import load_schema
 
-    _path, record = accept_synthesis("foo")
+    _path, record = accept_synthesis("foo-abcd1234")
     schema = load_schema("pipeline_synthesis")
     # Must not raise.
     jsonschema.validate(instance=record, schema=schema)
@@ -246,12 +248,12 @@ def test_accept_record_schema_valid(isolated_defs):
 
 
 def test_reject_record_schema_valid_and_invalid_status(isolated_defs):
-    _stage_file(isolated_defs, "foo")
+    _stage_file(isolated_defs, "foo-abcd1234")
 
     from lib.pipeline_synthesizer import reject_synthesis
     from schemas.artifacts import load_schema
 
-    record = reject_synthesis("foo")
+    record = reject_synthesis("foo-abcd1234")
     schema = load_schema("pipeline_synthesis")
     jsonschema.validate(instance=record, schema=schema)
     # Rejection encoded as "invalid" (schema enum has no "rejected" — Pitfall 2).

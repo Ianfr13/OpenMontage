@@ -41,6 +41,7 @@ import difflib
 import hashlib
 import json
 import os
+import re
 import shutil
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -51,6 +52,7 @@ from typing import Any, Literal
 import jsonschema
 from ruamel.yaml import YAML
 
+from lib.analysis_errors import InvalidPipelineSlug
 from lib.pipeline_loader import PIPELINE_DEFS_DIR, list_pipelines, load_pipeline
 
 
@@ -88,6 +90,53 @@ Mode = Literal["template", "replica"]
 #: Cap the -vN collision-suffix loop so adversarial filesystems cannot cause
 #: unbounded work (T-05-04 DoS mitigation).
 _MAX_COLLISION_SUFFIX = 99
+
+#: Validation pattern for slugs passed to accept_synthesis / reject_synthesis.
+#: Enforces lowercase hex+hyphen+underscore (matches ``_build_slug`` output —
+#: ``<base_pipeline>-<checksum[:8]>``); rejects path-traversal payloads
+#: (``..``, ``/``, ``\``, ``.``) and absolute paths by construction because
+#: those characters are not in the allowed class. Length bound ``{7,127}``
+#: covers every realistic slug from a 3-char base + 8-hex suffix up to the
+#: 128-char soft cap (NAME_MAX headroom on common filesystems). See Phase 10
+#: CLEAN-08 / v2.0 Phase 5 REVIEW MR-01.
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-_]{7,127}$")
+
+
+def _validate_slug(slug: str) -> None:
+    """Raise :class:`InvalidPipelineSlug` if ``slug`` is unsafe to join under ``STAGING_DIR``.
+
+    Two gates, applied in order — the regex is fast and rejects the obvious
+    payloads; the resolved-path check is defense-in-depth for any hypothetical
+    regex bypass (e.g., a symlink under the staging root escaping elsewhere):
+
+      1. Regex ``^[a-z0-9][a-z0-9\\-_]{7,127}$`` — matches the output of
+         :func:`_build_slug` (``<base>-<hex[:8]>``) and rejects every
+         path-traversal / absolute-path payload by construction (``.``,
+         ``/``, ``\\`` are not in the allowed character class).
+      2. Resolved-path check — confirm
+         ``(STAGING_DIR / f"{slug}.yaml").resolve().parent`` equals
+         ``STAGING_DIR.resolve()``; any symlink escape surfaces here.
+
+    Both gates short-circuit before any filesystem mutation (``shutil.move``
+    / ``src.unlink()``) in the caller.
+
+    Raises:
+        InvalidPipelineSlug: on any failure (never ``ValueError`` — the
+            sentinel subclasses ``VideoAnalysisError`` so umbrella handlers
+            catch it uniformly alongside ``VideoAnalysisAuthError`` and
+            ``MergeConsensusError``).
+    """
+    if not isinstance(slug, str) or not _SLUG_RE.fullmatch(slug):
+        raise InvalidPipelineSlug(
+            f"Invalid slug {slug!r} — must match {_SLUG_RE.pattern!r}"
+        )
+    # Defense-in-depth: resolved path must stay under STAGING_DIR.
+    candidate = (STAGING_DIR / f"{slug}.yaml").resolve()
+    staging_resolved = STAGING_DIR.resolve()
+    if staging_resolved != candidate.parent:
+        raise InvalidPipelineSlug(
+            f"Slug {slug!r} resolves outside staging root {staging_resolved!s}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -599,10 +648,14 @@ def accept_synthesis(slug: str) -> tuple[Path, dict[str, Any]]:
         ``schemas/artifacts/pipeline_synthesis.schema.json``.
 
     Raises:
+        InvalidPipelineSlug: ``slug`` fails the defensive regex or resolves
+            outside ``STAGING_DIR`` (CLEAN-08 / v2.0 Phase 5 REVIEW MR-01).
+            Short-circuits before any filesystem call.
         FileNotFoundError: staging file missing.
         FileExistsError: a file already exists at the promoted path (the
             call would overwrite an existing pipeline).
     """
+    _validate_slug(slug)
     src = STAGING_DIR / f"{slug}.yaml"
     dst = PIPELINE_DEFS_DIR / f"{slug}.yaml"
 
@@ -665,8 +718,12 @@ def reject_synthesis(slug: str) -> dict[str, Any]:
         Schema-validated ``pipeline_synthesis`` record.
 
     Raises:
+        InvalidPipelineSlug: ``slug`` fails the defensive regex or resolves
+            outside ``STAGING_DIR`` (CLEAN-08 / v2.0 Phase 5 REVIEW MR-01).
+            Short-circuits before any filesystem call.
         FileNotFoundError: staging file missing.
     """
+    _validate_slug(slug)
     src = STAGING_DIR / f"{slug}.yaml"
     if not src.exists():
         raise FileNotFoundError(f"Staging file not found: {src}")

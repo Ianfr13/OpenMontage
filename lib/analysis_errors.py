@@ -92,3 +92,25 @@ class MergeConsensusError(VideoAnalysisError):
     `VideoAnalysisError` so existing callers that do `except VideoAnalysisError`
     continue to catch it.
     """
+
+
+class InvalidPipelineSlug(VideoAnalysisError):
+    """Raised by ``lib.pipeline_synthesizer._validate_slug`` when a slug
+    passed to ``accept_synthesis`` or ``reject_synthesis`` fails the defensive
+    regex (``^[a-z0-9][a-z0-9\\-_]{7,127}$``) or resolves outside the declared
+    staging root ``pipeline_defs/_staging/``.
+
+    Replaces the v2.0 "no validation at all" pattern on the public accept/
+    reject entry points which let path-traversal payloads
+    (``slug="../cinematic"``, absolute paths, shell metachars) reach
+    ``shutil.move`` / ``src.unlink()`` directly — a latent hole because the
+    only in-tree caller today constructs slugs via ``_build_slug`` (hex + hyphen
+    only, deterministic). The guard closes the hole before an upstream refactor
+    surfaces user input here without the synthesizer knowing.
+
+    See Phase 10 CLEAN-08 / v2.0 Phase 5 REVIEW MR-01. Subclasses
+    ``VideoAnalysisError`` so existing callers that do
+    ``except VideoAnalysisError`` (the umbrella-handler pattern established by
+    Phase 8 / Phase 9 sentinels) continue to catch it — mirroring
+    ``VideoAnalysisAuthError`` and ``MergeConsensusError``.
+    """

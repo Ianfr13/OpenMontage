@@ -54,3 +54,25 @@ class VideoAnalysisRetryExhausted(VideoAnalysisError):
     Terminal — the tool's `execute()` catches this and returns
     `ToolResult(success=False, error=str(exc))`.
     """
+
+
+class VideoAnalysisAuthError(VideoAnalysisError):
+    """Raised when the analysis call fails with a non-retriable auth/permission
+    error (401 AuthenticationError or 403 PermissionDeniedError from the openai
+    SDK). Fast-fail — `execute()` surfaces this directly without invoking the
+    compact-retry ladder.
+
+    See Phase 8 CLEAN-01 / v2.0 Phase 3 REVIEW HI-01. Splitting this out of
+    `VideoAnalysisError` prevents `_analyze_with_fallback` from re-trying
+    against a known-bad key.
+    """
+
+
+class VideoAnalysisRateLimitError(VideoAnalysisError):
+    """Raised when the analysis call returns a 429 RateLimitError. The openai
+    SDK's own `max_retries` already handled transient rate limits; this
+    exception only propagates AFTER the SDK gave up, so re-running the compact
+    ladder would just compound the rate-limit. Fast-fail in `execute()`.
+
+    See Phase 8 CLEAN-01 / v2.0 Phase 3 REVIEW HI-01.
+    """

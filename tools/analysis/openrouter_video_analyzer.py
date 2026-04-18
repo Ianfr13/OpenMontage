@@ -41,10 +41,19 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
-from openai import APIError, BadRequestError, OpenAI
+from openai import (
+    APIError,
+    AuthenticationError,
+    BadRequestError,
+    OpenAI,
+    PermissionDeniedError,
+    RateLimitError,
+)
 
 from lib.analysis_errors import (
+    VideoAnalysisAuthError,
     VideoAnalysisError,
+    VideoAnalysisRateLimitError,
     VideoAnalysisRetryExhausted,
     VideoUploadError,
 )
@@ -352,9 +361,31 @@ class OpenRouterVideoAnalyzer(BaseTool):
             raise VideoAnalysisError(
                 "OpenRouter BadRequestError on prompt-embedded fallback path"
             )
+        except AuthenticationError as exc:
+            # HI-01 / CLEAN-01: 401 must fast-fail; the compact ladder cannot
+            # fix a bad key and would waste a paid API call. Sentinel bypasses
+            # _analyze_with_fallback via isinstance guard below.
+            raise VideoAnalysisAuthError(
+                f"OpenRouter authentication failed: {exc!s}"
+            ) from exc
+        except PermissionDeniedError as exc:
+            # HI-01 / CLEAN-01: 403 = model access / quota denied — same
+            # reasoning as 401.
+            raise VideoAnalysisAuthError(
+                f"OpenRouter permission denied: {exc!s}"
+            ) from exc
+        except RateLimitError as exc:
+            # HI-01 / CLEAN-01: 429 — SDK's own max_retries already handled
+            # transient cases; retrying here would only compound the
+            # rate-limit.
+            raise VideoAnalysisRateLimitError(
+                f"OpenRouter rate-limited: {exc!s}"
+            ) from exc
         except APIError as exc:
-            # AuthenticationError, PermissionDeniedError, RateLimitError,
-            # APITimeoutError all subclass APIError — surface with str(exc).
+            # AuthenticationError / PermissionDeniedError / RateLimitError
+            # already handled above. This branch now catches APITimeoutError
+            # and any other APIError subclass not explicitly enumerated — keep
+            # wrapping as a retry-eligible VideoAnalysisError (status quo).
             # T-03-06: str(exc) from the SDK does not contain the raw key.
             raise VideoAnalysisError(f"OpenRouter API error: {exc!s}") from exc
 
@@ -436,7 +467,9 @@ class OpenRouterVideoAnalyzer(BaseTool):
                 "falling back to prompt-embedded schema path.",
                 model, getattr(exc, "code", "?"),
             )
-        except VideoAnalysisError:
+        except VideoAnalysisError as exc:
+            if isinstance(exc, (VideoAnalysisAuthError, VideoAnalysisRateLimitError)):
+                raise  # HI-01 — fast-fail bypasses compact retry
             # Truncation / empty / parse error -> structured + compact retry
             prompt_compact = self._build_prompt(
                 inputs, depth="compact", include_schema_in_prompt=False
@@ -452,6 +485,8 @@ class OpenRouterVideoAnalyzer(BaseTool):
                     model, getattr(exc, "code", "?"),
                 )
             except VideoAnalysisError as exc:
+                if isinstance(exc, (VideoAnalysisAuthError, VideoAnalysisRateLimitError)):
+                    raise  # HI-01 — fast-fail bypasses compact retry
                 raise VideoAnalysisRetryExhausted(
                     f"Analysis failed after structured+compact retry: {exc}"
                 ) from exc
@@ -465,7 +500,9 @@ class OpenRouterVideoAnalyzer(BaseTool):
             return self._run_once(
                 client, data_url, prompt_embedded_full, model, structured=False
             )
-        except VideoAnalysisError:
+        except VideoAnalysisError as exc:
+            if isinstance(exc, (VideoAnalysisAuthError, VideoAnalysisRateLimitError)):
+                raise  # HI-01 — fast-fail bypasses compact retry
             prompt_embedded_compact = self._build_prompt(
                 inputs, depth="compact", include_schema_in_prompt=True
             )
@@ -478,6 +515,8 @@ class OpenRouterVideoAnalyzer(BaseTool):
                     structured=False,
                 )
             except VideoAnalysisError as exc:
+                if isinstance(exc, (VideoAnalysisAuthError, VideoAnalysisRateLimitError)):
+                    raise  # HI-01 — fast-fail bypasses compact retry
                 raise VideoAnalysisRetryExhausted(
                     "Analysis failed after prompt-embedded+compact retry: "
                     f"{exc}"
@@ -561,6 +600,11 @@ class OpenRouterVideoAnalyzer(BaseTool):
             # T-03-07: gate on canonical schema BEFORE returning to caller.
             validate_artifact("video_analysis", artifact)
         except VideoUploadError as exc:
+            return ToolResult(success=False, error=str(exc))
+        except (VideoAnalysisAuthError, VideoAnalysisRateLimitError) as exc:
+            # HI-01 fast-fail: surface verbatim. (_analyze_with_fallback already
+            # re-raised via isinstance guard; this branch ensures execute() does
+            # not accidentally absorb the sentinel into the generic handler.)
             return ToolResult(success=False, error=str(exc))
         except (VideoAnalysisError, VideoAnalysisRetryExhausted) as exc:
             return ToolResult(success=False, error=str(exc))

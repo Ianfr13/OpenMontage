@@ -35,7 +35,6 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import mimetypes
 import os
 from pathlib import Path
 from typing import Any
@@ -82,8 +81,21 @@ SUPPORTED_MIMES = frozenset({
     "video/mp4",
     "video/quicktime",    # .mov
     "video/webm",
-    "video/mpeg",
+    "video/x-matroska",   # .mkv
 })
+
+# CLEAN-03 / MD-02: explicit whitelist — unknown extensions return None
+# (fail-closed). The previous behavior defaulted unknown to "video/mp4",
+# which smuggled .bin / .pdf / .txt through the MIME gate. Callers treat
+# None as a rejection path via the existing `mime not in SUPPORTED_MIMES`
+# branch in execute().
+_EXT_TO_MIME: dict[str, str] = {
+    ".mp4": "video/mp4",
+    ".mov": "video/quicktime",
+    ".webm": "video/webm",
+    ".mkv": "video/x-matroska",
+    ".m4v": "video/mp4",
+}
 
 
 def _get_api_key() -> str | None:
@@ -112,10 +124,18 @@ def _clamp_max_upload(raw: Any) -> int:
     return max(MIN_MAX_UPLOAD_BYTES, min(v, HARD_MAX_UPLOAD_BYTES))
 
 
-def _guess_mime(path: Path) -> str:
-    """Best-effort MIME guess from extension; defaults to video/mp4."""
-    guessed = mimetypes.guess_type(path.name)[0]
-    return guessed or "video/mp4"
+def _guess_mime(path: Path) -> str | None:
+    """Return the MIME type for a path based on its extension, or None
+    if the extension is not in the explicit whitelist.
+
+    CLEAN-03 / MD-02: unknown extensions MUST return None so the MIME
+    gate in execute() rejects them. The previous fail-open default of
+    "video/mp4" allowed files like evil.bin / report.pdf / notes.txt to
+    slip through any whitelist (the stdlib guess returns None for
+    those, and the old code defaulted None -> "video/mp4", which IS in
+    SUPPORTED_MIMES). The fix is defense-in-depth.
+    """
+    return _EXT_TO_MIME.get(path.suffix.lower())
 
 
 def _normalize_shot_boundaries(boundaries: Any) -> list[tuple[float, float]]:

@@ -80,29 +80,27 @@ Deferred beyond v2.1 — tracked but not in this milestone's roadmap.
 
 ## Traceability
 
-Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLEAN-01 | — | Pending |
-| CLEAN-02 | — | Pending |
-| CLEAN-03 | — | Pending |
-| CLEAN-04 | — | Pending |
-| CLEAN-05 | — | Pending |
-| CLEAN-06 | — | Pending |
-| CLEAN-07 | — | Pending |
-| CLEAN-08 | — | Pending |
-| CLEAN-09 | — | Pending |
-| DRIFT-01 | — | Pending |
-| NITS-01 | — | Pending |
-| UAT-01 | — | Pending |
-| UAT-02 | — | Pending |
+| CLEAN-01 | Phase 8 | Pending |
+| CLEAN-02 | Phase 8 | Pending |
+| CLEAN-03 | Phase 8 | Pending |
+| CLEAN-04 | Phase 8 | Pending |
+| CLEAN-05 | Phase 9 | Pending |
+| CLEAN-06 | Phase 9 | Pending |
+| CLEAN-07 | Phase 9 | Pending |
+| CLEAN-08 | Phase 10 | Pending |
+| CLEAN-09 | Phase 10 | Pending |
+| DRIFT-01 | Phase 11 | Pending |
+| NITS-01 | Phase 11 | Pending |
+| UAT-01 | Phase 12 | Pending |
+| UAT-02 | Phase 12 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 13 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after initial v2.1 scoping*
+*Last updated: 2026-04-17 — traceability filled during v2.1 roadmap creation*

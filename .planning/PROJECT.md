@@ -12,15 +12,19 @@ Um agente que lê instruções (pipeline manifest → stage director skill → L
 
 ## Current State
 
-**v2.0 Reference Synthesis shipped (2026-04-17)** — 7 phases · 23 plans · 588 tests · all 47 requirements satisfied (46 complete + 1 partial SKILL-03 human-UAT by design). See `.planning/milestones/v2.0-ROADMAP.md` for the archive. The reference-synthesis meta skill (`skills/meta/reference-synthesis.md`) is the live entry point for turning a reference video into a reusable pipeline.
+**v2.1 Cleanup & Hardening shipped (2026-04-18)** — 5 phases · 8 plans · 689 tests (+68 vs v2.0). All v2.0 HIGH/MEDIUM code-review findings absorbed, `cinematic.yaml` drift cleared, 19 atomic NIT fixes + 2 already-resolved + 9 explicitly deferred, and OpenRouter SKILL-03 real-video UAT passed live (47 canonical fields populated). Gemini UAT deferred on free-tier quota (resource-availability tech debt, not a code defect). See `.planning/milestones/v2.1-ROADMAP.md` for the archive.
 
-## Current Milestone: v2.1 Cleanup & Hardening
+**Previously:** v2.0 Reference Synthesis (2026-04-17) — reference-synthesis meta skill (`skills/meta/reference-synthesis.md`) shipped as live entry point. See `.planning/milestones/v2.0-ROADMAP.md`.
 
-**Goal:** Absorver tech debt diferido do v2.0 — fixes HIGH/MEDIUM do code review, drift pré-existente em `cinematic.yaml`, e gates human-UAT — sem adicionar feature nova.
+## Next Milestone Goals
 
-**Target features:**
-- Wave 1: 1 HIGH + 8 MEDIUM code-review fixes (Phases 3, 4, 5 do v2.0)
-- Wave 2: `cinematic.yaml` `web_search` drift, 30 LOW/NIT items, SKILL-03 human-UAT real-video review com fixtures
+_TBD — start with `/gsd-new-milestone` to define requirements._
+
+Candidate themes from v2.1 deferred items:
+- UAT-01 completion (Gemini real-video SKILL-03 on billing-enabled key) — soft, single-shot retry
+- 9 NITS-DEF-* items in Code Hygiene future bucket (key redaction, `_FLAT_SCHEMA` lru_cache, shot-boundary helpers, orphan cost-tracker reservations, pathlib migration, LLM_FILL gate dedup, load_pipeline round-trip validation)
+- SYNTH2-* synthesizer quality improvements (still pending from v2.0)
+- OBS-* observability (cross-chunk cost tracking, analysis cache by checksum)
 
 ---
 
@@ -148,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-17 — started milestone v2.1 Cleanup & Hardening*
+*Last updated: 2026-04-18 after shipping milestone v2.1 Cleanup & Hardening*

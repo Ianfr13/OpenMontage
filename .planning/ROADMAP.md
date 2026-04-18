@@ -70,7 +70,10 @@ Plans:
   3. Acceptance/rejection records validate against their schemas (either new split `pipeline_acceptance` / `pipeline_rejection` schemas or the existing schema tightened with a sentinel allow-list — decision recorded in the phase plan)
   4. End-to-end synthesis flow test (`test_phase7_e2e_smoke.py::test_e2e_synthesis_flow_mocked`) still passes with the new record shape; reject path cleanup test still passes
   5. Full suite stays green: `pytest tests/ -q` reports 588+ passing tests after this phase
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 10-01-PLAN.md — CLEAN-08: InvalidPipelineSlug sentinel + slug regex/resolved-path guard on accept_synthesis and reject_synthesis + parametrized traversal tests
+- [ ] 10-02-PLAN.md — CLEAN-09: schema split (pipeline_acceptance + pipeline_rejection) + delete sentinel record fields + update pinning tests
 
 ### Phase 11: Drift & Hygiene
 **Goal**: Clear the last pre-existing pipeline drift and absorb the 30 deferred LOW/NIT code-review findings from Phases 3, 4, 5 as narrow atomic commits.
@@ -103,10 +106,10 @@ Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
 |-------|-----------|----------------|--------|-----------|
 | 8. OpenRouter Provider Hardening | v2.1 | 2/2 | Shipped | 2026-04-18 |
 | 9. Chunked Merge Correctness | v2.1 | 0/2 | Not started | - |
-| 10. Synthesizer Record Validity | v2.1 | 0/TBD | Not started | - |
+| 10. Synthesizer Record Validity | v2.1 | 0/2 | Not started | - |
 | 11. Drift & Hygiene | v2.1 | 0/TBD | Not started | - |
 | 12. Human UAT | v2.1 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-04-18 — Phase 9 plans created (CLEAN-05/06/07)*
+*Last updated: 2026-04-18 — Phase 10 plans created (CLEAN-08/09)*

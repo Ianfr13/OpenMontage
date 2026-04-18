@@ -762,6 +762,15 @@ def _merge_shot_boundary_source(values: list[Any]) -> str | None:
     """hybrid if any 'hybrid' OR cross-chunk disagreement; else first value.
 
     All-None → None (don't emit the field).
+
+    P4-LO-02: the escalation to ``"hybrid"`` on cross-chunk DISAGREEMENT
+    (e.g., one chunk reports ``"scene_detect"`` and another ``"model"``)
+    conflates two signals at the merged level: "the model ran a hybrid
+    approach per chunk" and "chunks disagreed about the source". This is
+    schema-valid (``"hybrid"`` is in the enum) but downstream consumers
+    keying on ``"hybrid"`` cannot distinguish the two. Kept as-is for
+    v2.x because the alternative (new enum value) is a contract change.
+    See 04-REVIEW.md#LO-02.
     """
     non_null = [v for v in values if v is not None]
     if not non_null:

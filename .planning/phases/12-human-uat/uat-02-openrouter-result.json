@@ -1,0 +1,177 @@
+{
+  "version": "2.0",
+  "source": {
+    "type": "local_file",
+    "url": "attached_video.mp4",
+    "duration_seconds": 30.0,
+    "resolution": "1920x1080"
+  },
+  "editing_pacing": {
+    "total_shots": 7,
+    "cuts_per_minute": 14,
+    "avg_shot_duration_seconds": 4.28,
+    "median_shot_duration_seconds": 4.0,
+    "shortest_shot_seconds": 2.0,
+    "longest_shot_seconds": 7.0,
+    "pacing_style": "slow_contemplative",
+    "shot_type_distribution": {
+      "talking_head": 0,
+      "b_roll": 0.57,
+      "text_card": 0.43,
+      "animation": 0
+    },
+    "b_roll_ratio": 0.57,
+    "a_roll_ratio": 0,
+    "motion_type_distribution": {
+      "motion_clip": 0.28,
+      "animated_still": 0.29,
+      "static_image": 0.43
+    },
+    "transition_types": [
+      "cut"
+    ],
+    "energy_arc": [
+      {
+        "timestamp_s": 0,
+        "energy_level": "low"
+      },
+      {
+        "timestamp_s": 8,
+        "energy_level": "low"
+      },
+      {
+        "timestamp_s": 15,
+        "energy_level": "medium"
+      },
+      {
+        "timestamp_s": 25,
+        "energy_level": "low"
+      }
+    ],
+    "suggested_remotion_scene_types": [
+      "slow_pan_image",
+      "fullscreen_title_card",
+      "subtle_zoom_reveal"
+    ],
+    "confidence": {
+      "total_shots": "high",
+      "pacing_style": "high",
+      "cuts_per_minute": "high",
+      "shot_type_distribution": "high",
+      "motion_type_distribution": "medium",
+      "energy_arc": "medium"
+    }
+  },
+  "audio": {
+    "has_narration": false,
+    "narration_style": "none",
+    "speaker_count": 0,
+    "has_music": true,
+    "music_genre": "Dark ambient cinematic synth",
+    "music_tempo_bpm": 60,
+    "music_intensity": "moderate",
+    "has_sfx": false,
+    "voice_music_mix": "music_dominant",
+    "confidence": {
+      "has_narration": "high",
+      "narration_style": "high",
+      "has_music": "high",
+      "music_intensity": "high",
+      "voice_music_mix": "high",
+      "voice_gender": "low",
+      "voice_tone": "low",
+      "narration_wpm": "low",
+      "narration_language": "low",
+      "sfx_style": "low",
+      "suggested_tts_voice_profile": "low",
+      "suggested_music_prompt": "low"
+    }
+  },
+  "visual_style": {
+    "color_palette": {
+      "primary": [
+        "#0A1128",
+        "#1E2A4F"
+      ],
+      "accent": [
+        "#F39C12",
+        "#E74C3C"
+      ],
+      "background": [
+        "#000000",
+        "#0B132B"
+      ],
+      "text": [
+        "#FFFFFF",
+        "#F0F0F0"
+      ]
+    },
+    "dominant_colors_hex": [
+      "#000000",
+      "#081023",
+      "#D35400"
+    ],
+    "color_temperature": "cool",
+    "color_grading_style": "dark_moody",
+    "background_treatment": "real_footage",
+    "typography_style": "Clean, sans-serif, all-caps, with wide kerning and a minimalist modern feel",
+    "typography_weight": "bold",
+    "text_card_usage": "moderate",
+    "motion_style": "ease_in_out",
+    "overlay_style": "full_frame_cards",
+    "production_quality": "professional",
+    "aspect_ratio": "16:9",
+    "confidence": {
+      "color_palette": "high",
+      "color_temperature": "high",
+      "color_grading_style": "high",
+      "typography_style": "high",
+      "typography_weight": "high",
+      "production_quality": "high",
+      "aspect_ratio": "high",
+      "suggested_playbook": "low",
+      "playbook_overrides": "low"
+    }
+  },
+  "narrative": {
+    "hook_type": "story_open",
+    "hook_duration_seconds": 8.0,
+    "narrative_arc": "story_driven",
+    "section_count": 3,
+    "section_structure": [
+      {
+        "label": "Scene Setting",
+        "approx_start_s": 0.0,
+        "approx_end_s": 8.0,
+        "summary": "Establishing shots of a cold, remote dish antenna and a dark, tense control room."
+      },
+      {
+        "label": "The Event",
+        "approx_start_s": 8.0,
+        "approx_end_s": 20.0,
+        "summary": "Revealing that a launch happened yesterday, culminating in the rocket taking off and a subsequent text reveal regarding the signal."
+      },
+      {
+        "label": "The Journey",
+        "approx_start_s": 20.0,
+        "approx_end_s": 30.0,
+        "summary": "A craft drifts through space leaving a luminescent trail, ending on the title card 'Signal From Tomorrow'."
+      }
+    ],
+    "cta_type": "none_detected",
+    "cta_duration_seconds": 0.0,
+    "target_platform": "youtube_long",
+    "target_duration_seconds": 30.0,
+    "information_density": "sparse",
+    "content_tone": "cinematic",
+    "paragraph_pattern": "Brief, suspenseful sentences presented exclusively as text cards to build mystery.",
+    "confidence": {
+      "hook_type": "medium",
+      "narrative_arc": "high",
+      "cta_type": "high",
+      "content_tone": "high",
+      "target_platform": "medium"
+    }
+  },
+  "shot_boundary_source": "model"
+}

@@ -121,6 +121,16 @@ _PRICING: dict[str, dict[str, Any]] = {
     },
 }
 
+# P4-NI-05: keep _PRICING_VERIFIED_AT load-bearing — every per-entry
+# `verified` stamp MUST match the module-level date so drift becomes a
+# test failure instead of a silent staleness. See 04-REVIEW.md#NI-05.
+assert all(
+    entry["verified"] == _PRICING_VERIFIED_AT for entry in _PRICING.values()
+), (
+    f"_PRICING entries out of sync with _PRICING_VERIFIED_AT={_PRICING_VERIFIED_AT!r}; "
+    "update both when refreshing pricing."
+)
+
 # Worker count envelope (RESEARCH Pitfall 4 + CONTEXT lock).
 _WORKER_MIN = 1
 _WORKER_MAX = 8

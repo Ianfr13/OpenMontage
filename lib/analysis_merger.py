@@ -619,10 +619,26 @@ def _merge_visual_style(
 def _merge_narrative(
     chunks: list[tuple[Chunk, dict]],
     weights: list[float],
+    full_chunks: list[tuple[Chunk, Any]] | None = None,
 ) -> dict:
     dims = _chunks_dim(chunks, "narrative")
-    first = dims[0]
-    last = dims[-1]
+    # CLEAN-07 / MR-03: pick hook/cta by ORIGINAL submission index.
+    # When full_chunks is provided, search for the lowest/highest-index
+    # entry where art is not None (the position-correct survivor).
+    # When None, fall back to survivor-list first/last (v2.0 behavior).
+    if full_chunks is not None:
+        successful = [art for _c, art in full_chunks if art is not None]
+        if successful:
+            first = (successful[0].get("narrative") or {})
+            last = (successful[-1].get("narrative") or {})
+        else:
+            # Defensive: should never happen (empty survivors raise upstream),
+            # but keep merger robust.
+            first = dims[0]
+            last = dims[-1]
+    else:
+        first = dims[0]
+        last = dims[-1]
     merged: dict[str, Any] = {}
 
     # hook_* from first chunk
@@ -786,9 +802,32 @@ def _build_chunking_metadata(
 def _pass_through_single(
     pair: tuple[Chunk, dict],
     provider: str,
+    full_chunks: list[tuple[Chunk, Any]] | None = None,
 ) -> dict:
-    """N=1 path: deep-copy input, strip private ``_*`` keys, attach metadata."""
+    """N=1 path: deep-copy input, strip private ``_*`` keys, attach metadata.
+
+    CLEAN-07: when ``full_chunks`` is provided and the sole survivor was NOT
+    at original index 0, log a WARNING — the survivor's local hook_* is not
+    the video-wide opening hook, but we still emit it (best-effort).
+    """
     chunk, art = pair
+    if full_chunks is not None:
+        # CLEAN-07 edge: if the sole survivor was NOT at original index 0,
+        # its hook_* describes a middle-of-video local hook, not the
+        # video-wide hook. Log so callers know the metadata is best-effort.
+        sole_chunk = pair[0]
+        for i, (c, art_slot) in enumerate(full_chunks):
+            if art_slot is not None:
+                if c is not sole_chunk and c.start_global != sole_chunk.start_global:
+                    continue
+                if i != 0:
+                    logger.warning(
+                        "Single-survivor merge: sole successful chunk was at "
+                        "original index %d (not 0) — hook_* reflects that chunk's "
+                        "local hook, not the video-wide opening.",
+                        i,
+                    )
+                break
     merged = copy.deepcopy(art)
     # Strip private hints that are NOT part of the canonical schema
     for key in list(merged.keys()):
@@ -802,6 +841,8 @@ def _pass_through_single(
 def merge_analyses(
     chunks: list[tuple[Chunk, dict]],
     provider: str = "gemini",
+    *,
+    full_chunks: list[tuple[Chunk, Any]] | None = None,
 ) -> dict:
     """Merge N per-chunk ``video_analysis`` artifacts into one canonical artifact.
 
@@ -816,6 +857,20 @@ def merge_analyses(
         ``chunking_metadata.provider``). Individual per-chunk providers
         can be overridden by the ``_provider_used`` key on the per-chunk
         artifact.
+    full_chunks:
+        Optional list of ``(Chunk, per_chunk_artifact_or_None)`` pairs in
+        SUBMISSION ORDER (same length as the total number of original chunks,
+        including failures). When supplied, used by ``_merge_narrative`` to
+        pick ``hook_*`` from the lowest-index pair where ``art is not None``
+        and ``cta_*`` from the highest-index pair where ``art is not None``.
+
+        Used by ``lib.chunked_analyzer.analyze_chunked`` when
+        ``on_chunk_error='continue'`` drops edge chunks — without this,
+        the merger would pick hook/cta from the survivor list's first/last,
+        which silently becomes a middle-of-video chunk when chunk 0 or
+        chunk N-1 failed (v2.0 Phase 4 MR-03 / CLEAN-07).
+
+        When ``None`` (default), behavior is unchanged from v2.0.
 
     Returns
     -------
@@ -836,7 +891,7 @@ def merge_analyses(
         raise ValueError("merge_analyses requires ≥1 chunk")
 
     if len(chunks) == 1:
-        return _pass_through_single(chunks[0], provider)
+        return _pass_through_single(chunks[0], provider, full_chunks=full_chunks)
 
     weights = [float(c.end_global - c.start_global) for c, _ in chunks]
 
@@ -846,7 +901,7 @@ def merge_analyses(
         "editing_pacing": _merge_editing_pacing(chunks, weights),
         "audio": _merge_audio(chunks, weights),
         "visual_style": _merge_visual_style(chunks, weights),
-        "narrative": _merge_narrative(chunks, weights),
+        "narrative": _merge_narrative(chunks, weights, full_chunks=full_chunks),
     }
 
     sbs = _merge_shot_boundary_source(

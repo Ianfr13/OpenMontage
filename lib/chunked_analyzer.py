@@ -452,12 +452,17 @@ def analyze_chunked(
             video_name=video_name,
         )
 
-        # Stamp per-chunk hints the merger consumes + strip failed chunks
+        # Stamp per-chunk hints the merger consumes + strip failed chunks.
+        # CLEAN-07 / MR-03: ALSO build a `full_chunks` list preserving original
+        # submission order with None slots for failures so merge_analyses can
+        # pick hook/cta from the position-correct survivor.
         pairs: list[tuple[Chunk, dict]] = []
+        full_chunks: list[tuple[Chunk, Any]] = []
         failed_idxs: list[int] = []
         for idx, chunk, tool_result in results:
             if not tool_result.success:
                 failed_idxs.append(idx)
+                full_chunks.append((chunk, None))
                 # fail_fast would already have raised inside _analyze_chunks;
                 # any non-success we see here must be "continue" mode.
                 continue
@@ -467,6 +472,7 @@ def analyze_chunked(
                 tool_result.model or provider_name
             )
             pairs.append((chunk, artifact))
+            full_chunks.append((chunk, artifact))
 
         if not pairs:
             # All chunks failed under "continue" mode — refuse to emit
@@ -481,7 +487,16 @@ def analyze_chunked(
             len(pairs),
             len(failed_idxs),
         )
-        merged = merge_analyses(pairs, provider=provider_name)
+        # CLEAN-07: pass full_chunks only when there are failures — when all chunks
+        # succeeded, the survivor list IS the full list and passing it is redundant
+        # (but not incorrect). Keep the call site narrow so backward-compat tests
+        # that patch merge_analyses see the same call shape on the happy path.
+        if failed_idxs:
+            merged = merge_analyses(
+                pairs, provider=provider_name, full_chunks=full_chunks
+            )
+        else:
+            merged = merge_analyses(pairs, provider=provider_name)
         if failed_idxs:
             # merge_analyses already attached chunking_metadata; enrich it.
             merged.setdefault("chunking_metadata", {})["failed_chunks"] = (

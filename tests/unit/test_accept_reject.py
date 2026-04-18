@@ -9,8 +9,8 @@ Tests:
    4 test_accept_missing_staging_raises        — FileNotFoundError
    5 test_reject_deletes_staging               — staging unlinked
    6 test_reject_missing_staging_raises        — FileNotFoundError
-   7 test_accept_record_schema_valid           — emitted record passes jsonschema
-   8 test_reject_record_schema_valid_and_invalid_status — validation_status="invalid"
+   7 test_accept_record_schema_valid           — emitted record passes jsonschema (pipeline_acceptance)
+   8 test_reject_record_schema_valid           — emitted record passes jsonschema (pipeline_rejection)
    9 test_llm_fill_wired_into_synthesize       — marker propagates through synth
   10 test_llm_fill_env_controlled              — VIDEO_SYNTH_LLM_FILL=false is honored
   11 test_llm_fill_use_llm_fill_false_no_call  — mock assert_not_called
@@ -235,29 +235,38 @@ def test_accept_record_schema_valid(isolated_defs):
     from schemas.artifacts import load_schema
 
     _path, record = accept_synthesis("foo-abcd1234")
-    schema = load_schema("pipeline_synthesis")
+    # CLEAN-09 / v2.0 Phase 5 REVIEW MR-02: post-accept records validate
+    # against pipeline_acceptance, NOT pipeline_synthesis.
+    schema = load_schema("pipeline_acceptance")
     # Must not raise.
     jsonschema.validate(instance=record, schema=schema)
     assert record["validation_status"] in ("valid", "invalid")
     assert record["version"] == "1.0"
+    assert "promoted_slug" in record and record["promoted_slug"] == "foo-abcd1234"
 
 
 # ---------------------------------------------------------------------------
-# Test 8: reject record → validation_status="invalid"
+# Test 8: reject record validates against pipeline_rejection (CLEAN-09)
 # ---------------------------------------------------------------------------
 
 
-def test_reject_record_schema_valid_and_invalid_status(isolated_defs):
+def test_reject_record_schema_valid(isolated_defs):
     _stage_file(isolated_defs, "foo-abcd1234")
 
     from lib.pipeline_synthesizer import reject_synthesis
     from schemas.artifacts import load_schema
 
     record = reject_synthesis("foo-abcd1234")
-    schema = load_schema("pipeline_synthesis")
+    # CLEAN-09 / v2.0 Phase 5 REVIEW MR-02: rejection has its own schema
+    # (pipeline_rejection) — no more reusing pipeline_synthesis with the
+    # Pitfall 2 validation_status="invalid" hack.
+    schema = load_schema("pipeline_rejection")
     jsonschema.validate(instance=record, schema=schema)
-    # Rejection encoded as "invalid" (schema enum has no "rejected" — Pitfall 2).
-    assert record["validation_status"] == "invalid"
+    assert "rejected_slug" in record and record["rejected_slug"] == "foo-abcd1234"
+    assert "validation_status" not in record, (
+        "Rejection is its own event (CLEAN-09 / v2.0 Phase 5 REVIEW MR-02); "
+        "it no longer reuses validation_status as a user-rejection proxy."
+    )
 
 
 # ---------------------------------------------------------------------------

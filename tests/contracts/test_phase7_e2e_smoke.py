@@ -122,10 +122,11 @@ def test_e2e_mocked_synthesis_accept_roundtrip(isolated_defs):
     assert loaded["name"] == staged_manifest["name"]
     assert loaded["stages"] == staged_manifest["stages"]
 
-    # Accept record validates.
+    # Accept record validates against pipeline_acceptance (CLEAN-09).
     jsonschema.validate(
-        instance=accept_record, schema=load_schema("pipeline_synthesis")
+        instance=accept_record, schema=load_schema("pipeline_acceptance")
     )
+    assert accept_record["promoted_slug"] == slug
 
 
 # ---------------------------------------------------------------------------
@@ -143,8 +144,13 @@ def test_e2e_mocked_synthesis_reject(isolated_defs):
     assert staged.exists()
 
     reject_record = reject_synthesis(slug)
-    # Phase 5 contract: schema has no "rejected"; user rejection is "invalid".
-    assert reject_record["validation_status"] == "invalid"
+    # CLEAN-09 / v2.0 Phase 5 REVIEW MR-02: rejection validates against its
+    # own schema; no more validation_status="invalid" Pitfall 2 hack.
+    jsonschema.validate(
+        instance=reject_record, schema=load_schema("pipeline_rejection")
+    )
+    assert reject_record["rejected_slug"] == slug
+    assert reject_record["staging_path"].startswith("pipeline_defs/_staging/")
     assert not staged.exists(), "Reject must delete staging file"
     assert not (isolated_defs / f"{slug}.yaml").exists(), (
         "Reject must NOT promote to pipeline_defs/"

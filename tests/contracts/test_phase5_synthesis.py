@@ -284,6 +284,6 @@ def test_end_to_end_synthesize_accept(isolated_defs, monkeypatch):
     assert promoted_manifest["name"] is not None
     assert "stages" in promoted_manifest
 
-    # Step 5: accept record schema-valid
-    schema = load_schema("pipeline_synthesis")
+    # Step 5: accept record schema-valid (CLEAN-09 — pipeline_acceptance).
+    schema = load_schema("pipeline_acceptance")
     jsonschema.validate(instance=accept_record, schema=schema)

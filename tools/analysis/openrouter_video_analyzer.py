@@ -76,7 +76,7 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "google/gemini-3.1-pro-preview"
 FALLBACK_MODEL = "google/gemini-2.5-pro"
 DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024           # 20 MB (RESEARCH Assumption A1)
-HARD_MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024        # 2 GB defensive cap
+HARD_MAX_UPLOAD_BYTES = 100 * 1024 * 1024             # 100 MB — inline-base64 ceiling; chunking handles larger inputs (Phase 4)
 MIN_MAX_UPLOAD_BYTES = 1
 SUPPORTED_MIMES = frozenset({
     "video/mp4",
@@ -155,9 +155,10 @@ def _format_shot_boundaries(pairs: list[tuple[float, float]]) -> str:
 def _build_data_url(video_path: Path, mime: str) -> str:
     """Full-buffer base64 encode (safe because size gate runs BEFORE this).
 
-    For <= 20 MB defaults this peaks at ~50 MB RAM (raw + b64 string) — well
-    within any reasonable host budget. Streaming base64 would add complexity
-    for no real benefit at this tier.
+    Size gate caps at HARD_MAX_UPLOAD_BYTES (100 MB); peak RAM in this
+    function is then ~250 MB (raw + b64 string). Streaming base64 would add
+    complexity for no real benefit at this tier. For larger inputs the
+    caller should go through Phase 4 chunking, not raise the cap.
     """
     b64 = base64.b64encode(video_path.read_bytes()).decode("ascii")
     return f"data:{mime};base64,{b64}"
@@ -230,7 +231,8 @@ class OpenRouterVideoAnalyzer(BaseTool):
                 "type": "integer",
                 "description": (
                     "Max inline-base64 size; clamped to "
-                    f"[1,{HARD_MAX_UPLOAD_BYTES}] (2GB)."
+                    f"[1,{HARD_MAX_UPLOAD_BYTES}] (100 MB ceiling — "
+                    "use Phase 4 chunking for larger inputs)."
                 ),
                 "default": DEFAULT_MAX_UPLOAD_BYTES,
             },
@@ -556,7 +558,8 @@ class OpenRouterVideoAnalyzer(BaseTool):
                 success=False,
                 error=(
                     f"video exceeds max_upload_bytes ({size} > {max_upload}); "
-                    "chunking lands in Phase 4"
+                    f"use Phase 4 chunking for inputs above the {HARD_MAX_UPLOAD_BYTES}-byte "
+                    "(100 MB) inline-base64 ceiling"
                 ),
             )
 

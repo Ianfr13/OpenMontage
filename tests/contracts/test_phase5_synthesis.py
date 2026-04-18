@@ -263,10 +263,14 @@ def test_end_to_end_synthesize_accept(isolated_defs, monkeypatch):
 
     staged_manifest = _pyyaml.safe_load(staged.read_text(encoding="utf-8"))
     issues = validate_synthesized_pipeline(staged_manifest)
-    # Regardless of whether cinematic has residual issues, the record from
-    # synthesize_pipeline already reports validation_status; assert it is
-    # a recognized enum value.
-    assert record["validation_status"] in ("valid", "invalid", "pending")
+    # P5-LR-06: synthesize_pipeline MUST emit a concrete validation verdict.
+    # "pending" is reserved for future async flows (see Pitfall 2 in
+    # 05-RESEARCH.md); tightening the enum here matches test_no_pending_
+    # status_emitted in the unit suite.
+    assert record["validation_status"] in ("valid", "invalid"), (
+        "synthesize_pipeline must never emit 'pending' — that enum value is "
+        "reserved for future async flows (Pitfall 2 in 05-RESEARCH.md)"
+    )
 
     # Pre-promotion state: pipeline_defs/<slug>.yaml must not exist yet
     # (slug is analysis-derived — won't collide with the 12 real pipelines).

@@ -218,6 +218,85 @@ def test_max_upload_clamp_non_numeric():
     assert _clamp_max_upload(None) == DEFAULT_MAX_UPLOAD_BYTES
 
 
+# ---------------------------------------------------------------------------
+# CLEAN-02 — HARD_MAX_UPLOAD_BYTES lowered to 100 MB
+# ---------------------------------------------------------------------------
+
+
+def test_hard_max_upload_bytes_is_100mb():
+    """CLEAN-02 / MD-01: hard cap is 100 MB, not 2 GB.
+
+    The 2 GB ceiling allowed a caller passing max_upload_bytes=2GB to
+    OOM the process when the 2GB raw buffer + 2.67GB base64 string
+    materialized simultaneously (~4.7 GB peak). Phase 4 chunking is the
+    intended path for anything larger than 100 MB.
+    """
+    assert HARD_MAX_UPLOAD_BYTES == 100 * 1024 * 1024
+
+
+def test_oversize_above_hard_cap_rejected_before_encode(
+    mock_openai, tmp_path, monkeypatch,
+):
+    """CLEAN-02 / MD-01: a file one byte above the 100 MB hard cap is
+    rejected BEFORE base64 encoding and BEFORE any create() call. The
+    caller sees an error message naming chunking as the intended path.
+
+    We pass max_upload_bytes=200MB (clamps DOWN to HARD_MAX_UPLOAD_BYTES
+    = 100 MB per the _clamp_max_upload rule) and a file of size
+    HARD_MAX_UPLOAD_BYTES + 1.
+    """
+    import tools.analysis.openrouter_video_analyzer as target
+
+    # Spy on base64.b64encode to prove no encoding happened
+    spy = MagicMock(side_effect=base64.b64encode)
+    monkeypatch.setattr(target.base64, "b64encode", spy)
+
+    # Truncate a file to exactly HARD_MAX_UPLOAD_BYTES + 1 bytes
+    big = tmp_path / "too_big.mp4"
+    size = HARD_MAX_UPLOAD_BYTES + 1
+    # Use a sparse-like write — posix supports truncate() for size without writing
+    with open(big, "wb") as fh:
+        fh.truncate(size)
+
+    t = OpenRouterVideoAnalyzer()
+    result = t.execute(
+        {"video_path": str(big), "max_upload_bytes": 200 * 1024 * 1024}
+    )
+    assert result.success is False
+    low = (result.error or "").lower()
+    assert "max_upload_bytes" in low or "exceeds" in low
+    assert "chunking" in low or "phase 4" in low
+    mock_openai.chat.completions.create.assert_not_called()
+    spy.assert_not_called()
+
+
+def test_oversize_at_hard_cap_boundary_allowed(mock_openai, tmp_path, valid_artifact):
+    """CLEAN-02 / MD-01 boundary: a file EXACTLY at HARD_MAX_UPLOAD_BYTES
+    passes the gate (inclusive boundary — gate uses strict >). This test
+    proves the cap is 100 MB INCLUSIVE, not 100 MB - 1 byte.
+
+    Uses a truncated sparse-ish file and a valid OK response to complete
+    the happy path.
+    """
+    at_cap = tmp_path / "at_cap.mp4"
+    with open(at_cap, "wb") as fh:
+        fh.truncate(HARD_MAX_UPLOAD_BYTES)
+
+    mock_openai.chat.completions.create.return_value = _resp_ok(valid_artifact)
+    t = OpenRouterVideoAnalyzer()
+    result = t.execute(
+        {"video_path": str(at_cap), "max_upload_bytes": HARD_MAX_UPLOAD_BYTES}
+    )
+    # Either success (happy path) OR rejection for another reason (e.g. MIME)
+    # — we only care that the SIZE gate did not reject it. Assert the
+    # rejection text, if any, is NOT about max_upload_bytes.
+    if not result.success:
+        low = (result.error or "").lower()
+        assert "max_upload_bytes" not in low, (
+            f"at-cap boundary should pass size gate, got: {result.error}"
+        )
+
+
 def test_base64_data_url_prefix(mock_openai, fake_video):
     """OR-03: messages carry data:video/mp4;base64,... URL (exact prefix)."""
     t = OpenRouterVideoAnalyzer()

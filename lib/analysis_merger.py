@@ -470,6 +470,18 @@ def _merge_audio(
         merged["music_genre"] = mg
 
     # music_tempo_bpm — weighted avg of non-null; null if all null
+    # P4-LO-04: `tempo_seen` encodes a three-way signal for this optional
+    # field:
+    #   * at least one chunk set music_tempo_bpm to a number → emit the
+    #     weighted average
+    #   * at least one chunk explicitly set music_tempo_bpm=None (i.e.
+    #     "no music detected") → emit None so downstream sees the explicit
+    #     negative signal
+    #   * no chunk mentioned music_tempo_bpm at all → omit the field
+    #     entirely (schema marks it optional)
+    # The distinction between the latter two cases keeps "explicit no
+    # music" visible to downstream consumers rather than collapsing to
+    # "we didn't look." See 04-REVIEW.md#LO-04.
     tempo_pairs: list[tuple[float, float]] = []
     tempo_seen = False
     for d, w in zip(dims, weights):

@@ -709,3 +709,97 @@ class TestSingleChunkBypass:
         # Underscore-prefixed keys must be stripped by merger
         assert "_cost_usd" not in merged
         assert "_provider_used" not in merged
+
+
+# ---------------------------------------------------------------------------
+# CLEAN-05 — provider validation (v2.0 Phase 4 MR-01)
+# ---------------------------------------------------------------------------
+
+
+class _BadProvider(StubProvider):
+    """StubProvider with an invalid schema-enum provider string."""
+
+    provider = "anthropic"  # NOT in {"gemini","openrouter"}
+
+
+class _NoneProvider(StubProvider):
+    """StubProvider whose .provider attribute is None."""
+
+    provider = None
+
+
+class _OpenRouterProvider(StubProvider):
+    """StubProvider with the other valid schema-enum provider."""
+
+    provider = "openrouter"
+
+
+class TestProviderValidation:
+    def test_invalid_provider_name_raises_before_split(self, monkeypatch, tmp_path):
+        """CLEAN-05: provider='anthropic' must raise ValueError before
+        split_video runs — prevents wasting a full pipeline on a bad config.
+        """
+        from lib import chunked_analyzer
+
+        split_spy = MagicMock()
+        monkeypatch.setattr(chunked_analyzer, "split_video", split_spy)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        provider = _BadProvider()
+        with pytest.raises(ValueError, match=r"anthropic.*gemini.*openrouter"):
+            chunked_analyzer.analyze_chunked(
+                str(tmp_path / "ref.mp4"), provider, max_workers=1
+            )
+        split_spy.assert_not_called()
+        assert provider._call_count == 0
+
+    def test_none_provider_raises_before_split(self, monkeypatch, tmp_path):
+        """CLEAN-05: provider=None (attribute missing / None) must raise
+        ValueError, not silently default to 'unknown'."""
+        from lib import chunked_analyzer
+
+        split_spy = MagicMock()
+        monkeypatch.setattr(chunked_analyzer, "split_video", split_spy)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        provider = _NoneProvider()
+        with pytest.raises(ValueError, match=r"None.*gemini.*openrouter"):
+            chunked_analyzer.analyze_chunked(
+                str(tmp_path / "ref.mp4"), provider, max_workers=1
+            )
+        split_spy.assert_not_called()
+
+    def test_invalid_provider_does_not_touch_cost_tracker(self, monkeypatch, tmp_path):
+        """CLEAN-05 corollary: validation happens BEFORE cost_tracker.estimate
+        so budget reports don't show phantom reservations for rejected calls."""
+        from lib import chunked_analyzer
+
+        monkeypatch.setattr(chunked_analyzer, "split_video", MagicMock())
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        cost_tracker = MagicMock()
+        provider = _BadProvider()
+        with pytest.raises(ValueError):
+            chunked_analyzer.analyze_chunked(
+                str(tmp_path / "ref.mp4"),
+                provider,
+                cost_tracker=cost_tracker,
+                max_workers=1,
+            )
+        cost_tracker.estimate.assert_not_called()
+        cost_tracker.reserve.assert_not_called()
+
+    def test_openrouter_provider_accepted(self, monkeypatch, tmp_path):
+        """CLEAN-05 negative-space check: the OTHER valid enum value
+        ('openrouter') is accepted — proves we didn't over-narrow the set."""
+        from lib import chunked_analyzer
+
+        chunks = _make_chunks(2)
+        monkeypatch.setattr(chunked_analyzer, "split_video", lambda vp: chunks)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        provider = _OpenRouterProvider()
+        merged = chunked_analyzer.analyze_chunked(
+            str(tmp_path / "ref.mp4"), provider, max_workers=1
+        )
+        assert merged["chunking_metadata"]["provider"] == "openrouter"

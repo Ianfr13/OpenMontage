@@ -803,3 +803,169 @@ class TestProviderValidation:
             str(tmp_path / "ref.mp4"), provider, max_workers=1
         )
         assert merged["chunking_metadata"]["provider"] == "openrouter"
+
+
+# ---------------------------------------------------------------------------
+# CLEAN-07 — continue mode + positional hook/CTA (v2.0 Phase 4 MR-03)
+# ---------------------------------------------------------------------------
+
+
+class TestContinueModePositionalHookCta:
+    """MR-03: when on_chunk_error='continue' drops edge chunks, hook/cta
+    must come from the ORIGINAL first/last successful chunk by submission
+    index — NOT from the survivor list's first/last."""
+
+    def _chunks_with_distinct_hook_cta(self):
+        """Build a fresh artifact factory that stamps chunk-specific hook/cta
+        values so we can assert which chunk's value ended up in the merge."""
+
+        def factory_for_index(idx: int):
+            def _factory():
+                art = copy.deepcopy(minimal_video_analysis())
+                # Hook type enums: question | bold_claim | visual_shock | stat_drop | story_open | problem_statement | none
+                hooks = ["question", "bold_claim", "visual_shock"]
+                # CTA type enums: subscribe | visit_link | purchase | follow | download | none_detected
+                ctas = ["subscribe", "visit_link", "purchase"]
+                art["narrative"]["hook_type"] = hooks[idx]
+                art["narrative"]["cta_type"] = ctas[idx]
+                return art
+            return _factory
+
+        return factory_for_index
+
+    def test_fail_chunk_0_hook_from_chunk_1(self, monkeypatch, tmp_path):
+        """Chunk 0 fails -> hook_type in merged output comes from chunk 1."""
+        from lib import chunked_analyzer
+
+        chunks = _make_chunks(3)
+        monkeypatch.setattr(chunked_analyzer, "split_video", lambda vp: chunks)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        factory_for = self._chunks_with_distinct_hook_cta()
+
+        class PerIndexStub(StubProvider):
+            def __init__(self):
+                super().__init__(fail_on_index={0}, fail_modes={0: "raise"})
+
+            def execute(self, inputs):
+                idx = self._call_count
+                # Let the parent handle failure FIRST so _call_count increments
+                result = super().execute(inputs)
+                if result.success:
+                    # Override with per-index artifact
+                    result.data = factory_for(idx)()
+                return result
+
+        provider = PerIndexStub()
+        merged = chunked_analyzer.analyze_chunked(
+            str(tmp_path / "ref.mp4"),
+            provider,
+            on_chunk_error="continue",
+            max_workers=1,
+        )
+        assert merged["chunking_metadata"]["failed_chunks"] == [0]
+        # Hook now comes from chunk 1 (not the survivor-list first, which
+        # in current v2.0 code would also be chunk 1 — but the test ANCHORS
+        # that contract). Chunk 1's hook_type = "bold_claim".
+        assert merged["narrative"]["hook_type"] == "bold_claim"
+        # CTA from chunk 2 (last survivor = highest-index survivor).
+        assert merged["narrative"]["cta_type"] == "purchase"
+
+    def test_fail_last_chunk_cta_from_second_to_last(self, monkeypatch, tmp_path):
+        """Chunk N-1 fails -> cta_type in merged output comes from chunk N-2."""
+        from lib import chunked_analyzer
+
+        chunks = _make_chunks(3)
+        monkeypatch.setattr(chunked_analyzer, "split_video", lambda vp: chunks)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        factory_for = self._chunks_with_distinct_hook_cta()
+
+        class PerIndexStub(StubProvider):
+            def __init__(self):
+                super().__init__(fail_on_index={2}, fail_modes={2: "raise"})
+
+            def execute(self, inputs):
+                idx = self._call_count
+                result = super().execute(inputs)
+                if result.success:
+                    result.data = factory_for(idx)()
+                return result
+
+        provider = PerIndexStub()
+        merged = chunked_analyzer.analyze_chunked(
+            str(tmp_path / "ref.mp4"),
+            provider,
+            on_chunk_error="continue",
+            max_workers=1,
+        )
+        assert merged["chunking_metadata"]["failed_chunks"] == [2]
+        # Hook from chunk 0 (unchanged — chunk 0 survived)
+        assert merged["narrative"]["hook_type"] == "question"
+        # CTA from chunk 1 (highest-index survivor)
+        assert merged["narrative"]["cta_type"] == "visit_link"
+
+    def test_fail_both_edges_hook_from_1_cta_from_nminus2(self, monkeypatch, tmp_path):
+        """Chunks 0 AND N-1 fail -> hook from chunk 1, cta from chunk N-2."""
+        from lib import chunked_analyzer
+
+        chunks = _make_chunks(4)
+        monkeypatch.setattr(chunked_analyzer, "split_video", lambda vp: chunks)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        def factory_for_idx(idx: int):
+            def _factory():
+                art = copy.deepcopy(minimal_video_analysis())
+                hooks = ["question", "bold_claim", "visual_shock", "stat_drop"]
+                ctas = ["subscribe", "visit_link", "purchase", "follow"]
+                art["narrative"]["hook_type"] = hooks[idx]
+                art["narrative"]["cta_type"] = ctas[idx]
+                return art
+            return _factory
+
+        class PerIndexStub(StubProvider):
+            def __init__(self):
+                super().__init__(
+                    fail_on_index={0, 3}, fail_modes={0: "raise", 3: "raise"}
+                )
+
+            def execute(self, inputs):
+                idx = self._call_count
+                result = super().execute(inputs)
+                if result.success:
+                    result.data = factory_for_idx(idx)()
+                return result
+
+        provider = PerIndexStub()
+        merged = chunked_analyzer.analyze_chunked(
+            str(tmp_path / "ref.mp4"),
+            provider,
+            on_chunk_error="continue",
+            max_workers=1,
+        )
+        assert sorted(merged["chunking_metadata"]["failed_chunks"]) == [0, 3]
+        assert merged["narrative"]["hook_type"] == "bold_claim"   # chunk 1
+        assert merged["narrative"]["cta_type"] == "purchase"      # chunk 2
+
+    def test_continue_mode_merged_artifact_schema_valid(
+        self, monkeypatch, tmp_path
+    ):
+        """Regression guard: after the continue-mode path runs, the merged
+        artifact MUST still validate against the video_analysis schema."""
+        from lib import chunked_analyzer
+        from schemas.artifacts import validate_artifact
+
+        chunks = _make_chunks(3)
+        monkeypatch.setattr(chunked_analyzer, "split_video", lambda vp: chunks)
+        monkeypatch.setattr(chunked_analyzer, "cleanup_chunks", MagicMock())
+
+        provider = StubProvider(
+            fail_on_index={0}, fail_modes={0: "raise"}
+        )
+        merged = chunked_analyzer.analyze_chunked(
+            str(tmp_path / "ref.mp4"),
+            provider,
+            on_chunk_error="continue",
+            max_workers=1,
+        )
+        validate_artifact("video_analysis", merged)  # raises on invalid

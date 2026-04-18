@@ -929,3 +929,49 @@ class TestMergeConsensusError:
         callers that broadly catch the base class."""
         from lib.analysis_errors import MergeConsensusError, VideoAnalysisError
         assert issubclass(MergeConsensusError, VideoAnalysisError)
+
+
+# ----------------------------------------------------------------------
+# CLEAN-07 — full_chunks kwarg for position-aware hook/cta
+# ----------------------------------------------------------------------
+
+
+class TestFullChunksKwarg:
+    def test_full_chunks_none_is_backward_compatible(self, fake_video_chunks):
+        """Passing full_chunks=None (the default) yields the exact same
+        merged artifact as not passing the kwarg at all."""
+        chunks_a = fake_video_chunks(n=3)
+        chunks_b = fake_video_chunks(n=3)
+        a = merge_analyses(chunks_a, provider="gemini")
+        b = merge_analyses(chunks_b, provider="gemini", full_chunks=None)
+        # hook_type is position-dependent in both paths — should match
+        assert a["narrative"]["hook_type"] == b["narrative"]["hook_type"]
+        assert a["narrative"]["cta_type"] == b["narrative"]["cta_type"]
+
+    def test_full_chunks_with_none_slots_preserves_position(
+        self, fake_video_chunks
+    ):
+        """full_chunks=[(c0, art0), (c1, None), (c2, art2)] -> merger picks
+        hook from art0 and cta from art2 (middle chunk failed)."""
+        # Build 3 chunks with distinct hook/cta markers
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"narrative": {"hook_type": "question", "cta_type": "subscribe"}},
+                {"narrative": {"hook_type": "bold_claim", "cta_type": "visit_link"}},
+                {"narrative": {"hook_type": "stat_drop", "cta_type": "purchase"}},
+            ],
+        )
+        # Survivors: 0 and 2; full_chunks keeps all 3 positions
+        survivors = [chunks[0], chunks[2]]
+        full = [
+            (chunks[0][0], chunks[0][1]),
+            (chunks[1][0], None),  # failed chunk
+            (chunks[2][0], chunks[2][1]),
+        ]
+        merged = merge_analyses(
+            survivors, provider="gemini", full_chunks=full
+        )
+        # Hook from chunk 0, cta from chunk 2 (chunk 1 failed)
+        assert merged["narrative"]["hook_type"] == "question"
+        assert merged["narrative"]["cta_type"] == "purchase"

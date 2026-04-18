@@ -42,8 +42,8 @@
   5. Full suite stays green: `pytest tests/ --ignore=tests/qa -q` reports at least the 621 pre-Phase-8 baseline passing + new Phase-8 tests, with 13 skipped and 3 pre-existing fc-list failures unchanged (the fc-list failures are pre-existing and documented in STATE.md)
 **Plans:** 2 plans
 Plans:
-- [ ] 08-01-PLAN.md — CLEAN-01: sentinel exception classes + narrow except for 401/403/429 + 4 unit tests proving fast-fail
-- [ ] 08-02-PLAN.md — CLEAN-02/03/04: 100MB cap + explicit MIME whitelist + OPENROUTER_BASE_URL dedup + corresponding tests
+- [x] 08-01-PLAN.md — CLEAN-01: sentinel exception classes + narrow except for 401/403/429 + 4 unit tests proving fast-fail
+- [x] 08-02-PLAN.md — CLEAN-02/03/04: 100MB cap + explicit MIME whitelist + OPENROUTER_BASE_URL dedup + corresponding tests
 
 ### Phase 9: Chunked Merge Correctness
 **Goal**: Make the chunked analyzer + merger produce artifacts that pass canonical schema validation without hardcoded fallback cheats and with positional hook/CTA rules honored.

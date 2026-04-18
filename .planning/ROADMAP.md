@@ -55,7 +55,10 @@ Plans:
   3. With `on_chunk_error="continue"` and a mix of successful/failed chunks, the merged artifact's hook comes from the lowest-index successful chunk and CTA from the highest-index — verified by a parametrized test fixture
   4. `validate_artifact("video_analysis", merged)` passes on every merger output path covered by `tests/test_analysis_merger.py` and `tests/test_chunked_analyzer.py`, with no test relying on the removed fallback defaults
   5. Full suite stays green: `pytest tests/ -q` reports 588+ passing tests after this phase
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — CLEAN-06: MergeConsensusError sentinel + remove 8 hardcoded fallback defaults in analysis_merger
+- [ ] 09-02-PLAN.md — CLEAN-05 + CLEAN-07: provider enum validation + position-preserving hook/CTA in continue mode
 
 ### Phase 10: Synthesizer Record Validity
 **Goal**: Harden synthesizer acceptance/rejection so slug/path inputs are validated defensively and the emitted records no longer abuse `pipeline_synthesis_run` with synthetic sentinel values.
@@ -98,12 +101,12 @@ Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. OpenRouter Provider Hardening | v2.1 | 0/TBD | Not started | - |
-| 9. Chunked Merge Correctness | v2.1 | 0/TBD | Not started | - |
+| 8. OpenRouter Provider Hardening | v2.1 | 2/2 | Shipped | 2026-04-18 |
+| 9. Chunked Merge Correctness | v2.1 | 0/2 | Not started | - |
 | 10. Synthesizer Record Validity | v2.1 | 0/TBD | Not started | - |
 | 11. Drift & Hygiene | v2.1 | 0/TBD | Not started | - |
 | 12. Human UAT | v2.1 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-04-17 — v2.1 Cleanup & Hardening roadmap created*
+*Last updated: 2026-04-18 — Phase 9 plans created (CLEAN-05/06/07)*

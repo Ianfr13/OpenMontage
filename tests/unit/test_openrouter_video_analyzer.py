@@ -64,7 +64,6 @@ from lib.analysis_errors import (  # noqa: E402
 from tools.analysis.openrouter_video_analyzer import (  # noqa: E402
     DEFAULT_MAX_UPLOAD_BYTES,
     DEFAULT_MODEL,
-    FALLBACK_MODEL,
     HARD_MAX_UPLOAD_BYTES,
     OPENROUTER_BASE_URL,
     OpenRouterVideoAnalyzer,

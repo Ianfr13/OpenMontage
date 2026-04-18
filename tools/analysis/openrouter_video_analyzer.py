@@ -73,7 +73,9 @@ logger = logging.getLogger(__name__)
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "google/gemini-3.1-pro-preview"
-FALLBACK_MODEL = "google/gemini-2.5-pro"
+# P3-LO-01: FALLBACK_MODEL constant removed — the tool never used it (retry
+# ladder stayed on _resolve_model()). Cross-model fallback is a feature
+# request, not a present capability; see 03-REVIEW.md#LO-01.
 DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024           # 20 MB (RESEARCH Assumption A1)
 HARD_MAX_UPLOAD_BYTES = 100 * 1024 * 1024             # 100 MB — inline-base64 ceiling; chunking handles larger inputs (Phase 4)
 MIN_MAX_UPLOAD_BYTES = 1

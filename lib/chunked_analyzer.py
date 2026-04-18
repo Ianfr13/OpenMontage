@@ -128,6 +128,12 @@ _WORKER_DEFAULT = 4
 _WORKER_ENV_VAR = "VIDEO_CHUNK_WORKERS"
 
 
+# CLEAN-05 / v2.0 Phase 4 REVIEW MR-01 — chunking_metadata.provider is
+# schema-constrained to this set. Validated at argument-entry time so
+# invalid providers fail before split_video runs (saves a full pipeline).
+_ALLOWED_PROVIDERS: frozenset[str] = frozenset({"gemini", "openrouter"})
+
+
 # ---------------------------------------------------------------------------
 # Worker resolution
 # ---------------------------------------------------------------------------
@@ -415,7 +421,16 @@ def analyze_chunked(
     """
     video_path_str = str(video_path)
     video_name = Path(video_path_str).name
-    provider_name = getattr(provider_tool, "provider", None) or "unknown"
+    # CLEAN-05: pull the provider name WITHOUT a silent "unknown" default — we
+    # want None to surface here so the validation below catches the contract
+    # violation with a specific error rather than a downstream schema error.
+    provider_name = getattr(provider_tool, "provider", None)
+    if provider_name not in _ALLOWED_PROVIDERS:
+        raise ValueError(
+            f"provider_tool.provider={provider_name!r} is not in the "
+            f"schema enum {sorted(_ALLOWED_PROVIDERS)} — merged artifact "
+            f"would fail schema validation"
+        )
 
     t0 = time.monotonic()
     logger.info("analyze_chunked: splitting %s", video_path_str)

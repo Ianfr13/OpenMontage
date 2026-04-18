@@ -313,7 +313,7 @@ def test_base64_data_url_prefix(mock_openai, fake_video):
 
 
 def test_unsupported_mime_rejected(mock_openai, tmp_path):
-    """OR-03: .avi (non-whitelisted MIME) rejected; no create() call."""
+    """OR-03 / CLEAN-03: .avi (outside _EXT_TO_MIME whitelist) -> _guess_mime returns None -> rejected by MIME gate; no create() call."""
     vid = tmp_path / "ref.avi"
     vid.write_bytes(b"\x00" * 128)
     t = OpenRouterVideoAnalyzer()
@@ -325,10 +325,60 @@ def test_unsupported_mime_rejected(mock_openai, tmp_path):
 
 
 def test_supported_mimes_whitelist():
-    """OR-03: whitelist matches the documented OpenRouter-supported set."""
+    """OR-03 / CLEAN-03: whitelist matches the documented OpenRouter-supported set."""
     assert "video/mp4" in SUPPORTED_MIMES
     assert "video/webm" in SUPPORTED_MIMES
     assert "video/quicktime" in SUPPORTED_MIMES
+    assert "video/x-matroska" in SUPPORTED_MIMES   # CLEAN-03: .mkv support
+
+
+@pytest.mark.parametrize(
+    "filename, expected_mime",
+    [
+        ("v.mp4",  "video/mp4"),
+        ("v.MP4",  "video/mp4"),        # case-insensitive via .lower()
+        ("v.mov",  "video/quicktime"),
+        ("v.webm", "video/webm"),
+        ("v.mkv",  "video/x-matroska"),
+        ("v.m4v",  "video/mp4"),
+    ],
+)
+def test_guess_mime_whitelist_allow(filename, expected_mime, tmp_path):
+    """CLEAN-03 / MD-02: allowed extensions map to the expected MIME."""
+    from tools.analysis.openrouter_video_analyzer import _guess_mime
+    p = tmp_path / filename
+    p.write_bytes(b"\x00")
+    assert _guess_mime(p) == expected_mime
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["evil.bin", "report.pdf", "notes.txt", "script.exe", "ref.avi", "archive.zip", "no_extension"],
+)
+def test_guess_mime_whitelist_reject(filename, tmp_path):
+    """CLEAN-03 / MD-02: any extension outside the whitelist returns None
+    (fail-closed). Previously these would default to "video/mp4" and pass
+    the MIME gate — a silent fail-open bug.
+    """
+    from tools.analysis.openrouter_video_analyzer import _guess_mime
+    p = tmp_path / filename
+    p.write_bytes(b"\x00")
+    assert _guess_mime(p) is None
+
+
+def test_execute_rejects_bin_and_pdf_before_api_call(mock_openai, tmp_path):
+    """CLEAN-03 / MD-02: the MIME gate in execute() rejects .bin and .pdf
+    with NO create() call — proves the whitelist fix is wired end-to-end.
+    """
+    for name in ("evil.bin", "report.pdf", "notes.txt"):
+        bad = tmp_path / name
+        bad.write_bytes(b"\x00" * 64)
+        t = OpenRouterVideoAnalyzer()
+        result = t.execute({"video_path": str(bad)})
+        assert result.success is False, f"{name} should be rejected"
+        low = (result.error or "").lower()
+        assert "mime" in low or "unsupported" in low
+    mock_openai.chat.completions.create.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

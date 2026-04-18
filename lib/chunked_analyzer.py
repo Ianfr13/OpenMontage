@@ -77,7 +77,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from lib.analysis_merger import merge_analyses
-from lib.video_chunker import Chunk, cleanup_chunks, split_video  # noqa: F401
+from lib.video_chunker import Chunk, cleanup_chunks, split_video
 from tools.base_tool import ToolResult
 
 logger = logging.getLogger(__name__)

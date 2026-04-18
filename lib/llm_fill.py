@@ -192,7 +192,10 @@ def _call_with_retry(
             )
             if attempt == _MAX_ATTEMPTS:
                 return None
-    return None
+    # P5-LR-04: unreachable — the loop either returns on success or
+    # returns None on the final attempt's except branch. Kept explicit
+    # for type-checker happiness; see 05-REVIEW.md#LR-04.
+    return None  # pragma: no cover — defensive / type-check anchor
 
 
 # ---------------------------------------------------------------------------

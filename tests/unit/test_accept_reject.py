@@ -335,3 +335,86 @@ def test_llm_fill_use_llm_fill_false_no_call(isolated_defs, monkeypatch):
         _minimal_analysis(), mode="template", use_llm_fill=False
     )
     spy.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# CLEAN-08 / v2.0 Phase 5 REVIEW MR-01 — slug validation tests
+# ---------------------------------------------------------------------------
+
+#: Traversal + malformed payloads covered by _SLUG_RE and the resolved-path
+#: guard. Includes empty, too-short (7 chars), uppercase, slash, leading dot,
+#: absolute, whitespace, shell-metachar, and backslash cases. See
+#: 05-REVIEW.md MR-01 for the full vector set.
+_MALFORMED_SLUGS = [
+    "",
+    "a",
+    "abcdef1",             # 7 chars — below {7,127} minimum (needs 8+)
+    "Foo-abcdef12",        # uppercase — regex is lowercase-only
+    "foo/bar",             # slash
+    "../cinematic",        # traversal
+    "..",                  # traversal
+    "/cinematic",          # absolute
+    "foo bar",             # whitespace
+    "foo;rm",              # shell metachar
+    "foo\\bar",            # backslash
+]
+
+
+@pytest.mark.parametrize("bad_slug", _MALFORMED_SLUGS)
+def test_accept_rejects_malformed_slug(isolated_defs, bad_slug):
+    """accept_synthesis must raise InvalidPipelineSlug on any malformed /
+    traversal payload BEFORE touching the filesystem (CLEAN-08)."""
+    from lib.analysis_errors import InvalidPipelineSlug
+    from lib.pipeline_synthesizer import accept_synthesis
+
+    with pytest.raises(InvalidPipelineSlug):
+        accept_synthesis(bad_slug)
+
+
+@pytest.mark.parametrize("bad_slug", _MALFORMED_SLUGS)
+def test_reject_rejects_malformed_slug(isolated_defs, bad_slug):
+    """reject_synthesis applies the identical guard — path-traversal payloads
+    never reach src.unlink() (CLEAN-08)."""
+    from lib.analysis_errors import InvalidPipelineSlug
+    from lib.pipeline_synthesizer import reject_synthesis
+
+    with pytest.raises(InvalidPipelineSlug):
+        reject_synthesis(bad_slug)
+
+
+def test_accept_happy_path_canonical_slug_still_works(isolated_defs):
+    """Canonical _build_slug output (``<base>-<hex[:8]>``) passes the regex
+    unchanged — locks the validator against future over-tightening."""
+    _stage_file(isolated_defs, "cinematic-a1b2c3d4")
+
+    from lib.pipeline_synthesizer import accept_synthesis
+
+    promoted, _record = accept_synthesis("cinematic-a1b2c3d4")
+    assert promoted.name == "cinematic-a1b2c3d4.yaml"
+    assert promoted.exists()
+
+
+def test_invalid_pipeline_slug_is_video_analysis_error():
+    """Inheritance lock — ``except VideoAnalysisError`` umbrella-handlers
+    established in Phase 8 / Phase 9 MUST still catch the new sentinel."""
+    from lib.analysis_errors import InvalidPipelineSlug, VideoAnalysisError
+
+    assert issubclass(InvalidPipelineSlug, VideoAnalysisError)
+    assert isinstance(InvalidPipelineSlug("x"), VideoAnalysisError)
+
+
+def test_accept_slug_validation_short_circuits_filesystem(isolated_defs):
+    """Malformed slug MUST short-circuit before any shutil/os call — the
+    staged file is untouched and no target file is created."""
+    from lib.analysis_errors import InvalidPipelineSlug
+    from lib.pipeline_synthesizer import accept_synthesis
+
+    staged = _stage_file(isolated_defs, "cinematic-a1b2c3d4")
+    assert staged.exists()
+
+    with pytest.raises(InvalidPipelineSlug):
+        accept_synthesis("../cinematic-a1b2c3d4")
+
+    # Untouched — validation short-circuited before shutil.move.
+    assert staged.exists()
+    assert not (isolated_defs / "cinematic-a1b2c3d4.yaml").exists()

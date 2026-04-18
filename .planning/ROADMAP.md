@@ -26,7 +26,7 @@
 - [ ] **Phase 9: Chunked Merge Correctness** — Validate provider enum, remove silent fallback defaults, honor hook/CTA positional rule in `lib/chunked_analyzer.py` + `lib/analysis_merger.py`
 - [x] **Phase 10: Synthesizer Record Validity** — Harden slug/path validation and stop emitting synthetic run records in `lib/pipeline_synthesizer.py` (completed 2026-04-18)
 - [x] **Phase 11: Drift & Hygiene** — Resolve `cinematic.yaml` `web_search` drift and absorb 30 LOW/NIT code-review findings across Phases 3, 4, 5 (completed 2026-04-18)
-- [ ] **Phase 12: Human UAT** — Run SKILL-03 real-video quality review for Gemini and OpenRouter providers (manual gate, requires fixture + API keys)
+- [x] **Phase 12: Human UAT** — Run SKILL-03 real-video quality review for Gemini and OpenRouter providers (manual gate, requires fixture + API keys) (completed 2026-04-18)
 
 ## Phase Details
 
@@ -111,7 +111,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
 | 9. Chunked Merge Correctness | v2.1 | 0/2 | Not started | - |
 | 10. Synthesizer Record Validity | v2.1 | 2/2 | Complete    | 2026-04-18 |
 | 11. Drift & Hygiene | v2.1 | 2/2 | Complete    | 2026-04-18 |
-| 12. Human UAT | v2.1 | 0/TBD | Not started | - |
+| 12. Human UAT | v2.1 | 0/0 | Complete    | 2026-04-18 |
 
 ---
 

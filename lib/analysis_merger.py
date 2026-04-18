@@ -54,7 +54,7 @@ from __future__ import annotations
 import copy
 import logging
 from collections import Counter
-from typing import Any, Callable
+from typing import Any
 
 from lib.analysis_errors import MergeConsensusError
 from lib.video_chunker import Chunk

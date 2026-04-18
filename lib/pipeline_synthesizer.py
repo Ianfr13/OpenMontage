@@ -40,6 +40,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -55,6 +56,9 @@ from ruamel.yaml import YAML
 from lib.analysis_errors import InvalidPipelineSlug
 from lib.pipeline_loader import PIPELINE_DEFS_DIR, list_pipelines, load_pipeline
 from schemas.artifacts import validate_artifact
+
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -371,8 +375,18 @@ def match_base_pipeline(analysis: dict[str, Any]) -> dict[str, Any]:
     for name in list_pipelines():
         try:
             manifest = load_pipeline(name)
-        except Exception:
-            # A malformed pipeline file should not crash the matcher.
+        except Exception as exc:
+            # P5-LR-02: a malformed pipeline file should not crash the
+            # matcher, but the silent 0.0 score previously made the
+            # failure invisible. Log a warning so operators notice a
+            # manifest that never wins is actually broken.
+            # See 05-REVIEW.md#LR-02.
+            logger.warning(
+                "match_base_pipeline: skipping pipeline %r (%s: %s)",
+                name,
+                type(exc).__name__,
+                exc,
+            )
             scores.append((name, 0.0))
             continue
 

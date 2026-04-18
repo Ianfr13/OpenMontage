@@ -84,7 +84,10 @@ Plans:
   2. All 16 LOW + 14 NIT items from `.planning/milestones/v2.0-phases/{03-openrouter-provider,04-chunking,05-synthesizer}/*-REVIEW.md` are either fixed (with a referenced commit) or explicitly deferred with rationale in a phase deferral record — zero items left unresolved
   3. `git log --oneline v2.0..HEAD -- lib/ tools/` shows commits that are narrow and atomic (one concern per commit, as required by NITS-01), not a monolithic absorb commit
   4. Full suite stays green: `pytest tests/ -q` reports 588+ passing tests after the absorption
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 11-01-PLAN.md — DRIFT-01: remove `web_search` from cinematic.yaml + regression tests (2 tasks, narrow edit)
+- [ ] 11-02-PLAN.md — NITS-01: reading-pass classification of 30 LO/NI items + fix-pass with one atomic commit per fix
 
 ### Phase 12: Human UAT
 **Goal**: Close the by-design manual quality gate on both video analyzer providers with a user-provided fixture video and real API keys, recording a dated verdict per provider.
@@ -107,9 +110,9 @@ Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
 | 8. OpenRouter Provider Hardening | v2.1 | 2/2 | Shipped | 2026-04-18 |
 | 9. Chunked Merge Correctness | v2.1 | 0/2 | Not started | - |
 | 10. Synthesizer Record Validity | v2.1 | 2/2 | Complete    | 2026-04-18 |
-| 11. Drift & Hygiene | v2.1 | 0/TBD | Not started | - |
+| 11. Drift & Hygiene | v2.1 | 0/2 | Not started | - |
 | 12. Human UAT | v2.1 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-04-18 — Phase 10 plans created (CLEAN-08/09)*
+*Last updated: 2026-04-18 — Phase 11 plans created (DRIFT-01 + NITS-01)*

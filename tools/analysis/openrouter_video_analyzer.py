@@ -58,6 +58,7 @@ from lib.analysis_errors import (
 )
 from lib.schema_adapter import to_api_schema
 from schemas.artifacts import load_schema, validate_artifact
+from tools.analysis._prompt import ANALYSIS_PROMPT as _ANALYSIS_PROMPT
 from tools.base_tool import (
     BaseTool,
     ResourceProfile,
@@ -296,21 +297,15 @@ class OpenRouterVideoAnalyzer(BaseTool):
             )
         depth_directive = (
             "Use terse but complete phrasing; keep descriptive fields under "
-            f"{COMPACT_FIELD_WORD_LIMIT} words each."
+            f"{COMPACT_FIELD_WORD_LIMIT} words each. "
+            "Omit the _cues map when analysis_depth=compact."
             if depth == "compact"
-            else "Be thorough across all 4 dimensions."
+            else "Be thorough across all 5 dimensions and emit _cues."
         )
-        base = (
-            "Analyze the attached video across 4 dimensions: "
-            "editing_pacing, audio, visual_style, narrative. "
-            "Return a JSON object matching the required schema.\n\n"
-            f"{bounds_line}\n\n"
-            "For EVERY uncertain or absent field, populate the dimension's "
-            "confidence map with the field-name -> \"low\" entry (never omit "
-            "a required field, never emit null). Use \"medium\" or \"high\" "
-            "only when you are genuinely confident in the value.\n\n"
-            f"Depth directive: {depth_directive}\n"
-            f"(analysis_depth={depth})"
+        base = _ANALYSIS_PROMPT.format(
+            bounds_line=bounds_line,
+            depth_directive=depth_directive,
+            depth=depth,
         )
         if include_schema_in_prompt:
             # Fallback path: the routed model does not accept

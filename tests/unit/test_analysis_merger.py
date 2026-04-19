@@ -1475,9 +1475,10 @@ class TestFormatMergeRound2:
         used = set(_ARCHETYPE_TO_CATEGORY.values())
         assert used <= cat_enum, f"map uses categories not in schema enum: {used - cat_enum}"
 
-    def test_unmapped_archetype_raises_merge_consensus_error(self, fake_video_chunks):
-        """Gemini ruthless change: fail loud on drift rather than derive a chimera."""
-        from lib.analysis_merger import MergeConsensusError, _ARCHETYPE_TO_CATEGORY
+    def test_unmapped_archetype_drops_format_block_gracefully(self, fake_video_chunks, caplog):
+        """Round-3 (Gemini): unmapped archetype logs + drops format block
+        instead of crashing the whole merge (fail-graceful)."""
+        from lib.analysis_merger import _ARCHETYPE_TO_CATEGORY
         from unittest.mock import patch
 
         chunks = fake_video_chunks(
@@ -1487,10 +1488,19 @@ class TestFormatMergeRound2:
                 {"format": self._fmt("talking_head_studio")},
             ],
         )
-        # Simulate a drift: remove the archetype from the map temporarily
+        # Simulate drift: temporarily empty the map. Merge must succeed,
+        # emit a warning, and produce a merged artifact without a format
+        # block (rest of the dimensions merge normally).
+        import logging
         with patch.dict(_ARCHETYPE_TO_CATEGORY, {}, clear=True):
-            with pytest.raises(MergeConsensusError, match="not in _ARCHETYPE_TO_CATEGORY"):
-                merge_analyses(chunks, provider="gemini")
+            with caplog.at_level(logging.WARNING, logger="lib.analysis_merger"):
+                merged = merge_analyses(chunks, provider="gemini")
+        assert "format" not in merged
+        # Warning message mentions the drift cause
+        assert any(
+            "not in _ARCHETYPE_TO_CATEGORY" in rec.message
+            for rec in caplog.records
+        )
 
     def test_partial_format_missing_production_style_drops_block(self, fake_video_chunks):
         """Gemini Bug D: when production_style is unresolvable, omit format block."""
@@ -1608,3 +1618,180 @@ def _minimal_artifact_for_test():
         minimal_video_analysis as _m,
     )
     return copy.deepcopy(_m())
+
+
+# ----------------------------------------------------------------------
+# Round 3 — post-round-2 peer review edge cases
+# ----------------------------------------------------------------------
+
+
+class TestGroundingCuesRound3:
+    """Coverage for the round-2 peer-review findings."""
+
+    def _cue(
+        self,
+        path: str,
+        support: list[str],
+        value: str = "stub",
+        rejected: str | None = None,
+    ) -> dict:
+        out: dict[str, Any] = {"field_path": path, "value": value, "support": support}
+        if rejected:
+            out["rejected"] = rejected
+        return out
+
+    def test_format_cues_dropped_when_format_block_dropped(self, fake_video_chunks):
+        """Round-3 Bug N2 + Gemini ruthless: if the format block is dropped
+        (e.g. unmapped archetype), orphaned format.* cues must also be dropped.
+        """
+        from lib.analysis_merger import _ARCHETYPE_TO_CATEGORY
+        from unittest.mock import patch
+
+        chunks = fake_video_chunks(
+            n=2,
+            chunk_seconds=100.0,
+            overrides=[
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                 },
+                 "grounding_cues": [
+                     self._cue("format.primary_archetype",
+                               ["0:00-0:10 subject to camera"],
+                               value="talking_head_studio"),
+                 ]},
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                 },
+                 "grounding_cues": [
+                     self._cue("narrative.hook_type",
+                               ["0:00-0:03 question"],
+                               value="question"),
+                 ]},
+            ],
+        )
+        with patch.dict(_ARCHETYPE_TO_CATEGORY, {}, clear=True):
+            merged = merge_analyses(chunks, provider="gemini")
+        assert "format" not in merged
+        gc = merged.get("grounding_cues", [])
+        emitted_paths = {e["field_path"] for e in gc}
+        # format.primary_archetype cue is orphaned -> dropped
+        assert "format.primary_archetype" not in emitted_paths
+
+    def test_pre_v2_1_cue_missing_value_dropped_on_string_path(self, fake_video_chunks):
+        """Round-3 Bug N1: cues without `value` on exact-enum paths are
+        dropped so the merger never emits schema-invalid entries."""
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"narrative": {"hook_type": "question"},
+                 "grounding_cues": [
+                     # pre-v2.1 shape: no `value` key
+                     {"field_path": "narrative.hook_type", "support": ["0:03 q"]},
+                 ]},
+                {"narrative": {"hook_type": "question"}},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        # No grounding_cues survive (the single entry lacked `value`)
+        assert "grounding_cues" not in merged
+
+    def test_structured_path_cues_partition_by_value(self, fake_video_chunks):
+        """Round-3 Bug N3: structured-path cues with different `value` tags
+        produce SEPARATE merged entries, not one with mixed supports."""
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"visual_style": {"color_palette": {"primary": ["#F0D9B1", "#87CEEB"]}},
+                 "grounding_cues": [
+                     self._cue("visual_style.color_palette",
+                               ["warm dominant in skin tones"],
+                               value="warm_amber"),
+                 ]},
+                {"visual_style": {"color_palette": {"primary": ["#F0D9B1", "#87CEEB"]}},
+                 "grounding_cues": [
+                     self._cue("visual_style.color_palette",
+                               ["cyan sky backgrounds"],
+                               value="cool_cyan"),
+                 ]},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        gc = [e for e in merged["grounding_cues"] if e["field_path"] == "visual_style.color_palette"]
+        # Two entries — one per value tag — not one with pooled supports.
+        assert len(gc) == 2
+        values = {e["value"] for e in gc}
+        assert values == {"warm_amber", "cool_cyan"}
+        # Each keeps its own support
+        amber = next(e for e in gc if e["value"] == "warm_amber")
+        cyan = next(e for e in gc if e["value"] == "cool_cyan")
+        assert any("warm dominant" in s for s in amber["support"])
+        assert any("cyan sky" in s for s in cyan["support"])
+
+    def test_meta_format_chunk_without_trend_leaves_trend_unset(self, fake_video_chunks):
+        """Round-3 Bug F bad-branch: if the meta_format chunk has no
+        trend_reference, we do NOT fall back to another chunk (which could
+        create a contradiction)."""
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                # chunk 0: trend_reference with NO meta_format
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                    "trend_reference": "older_unrelated_trend",
+                 }},
+                # chunk 1: meta_format WITHOUT trend_reference
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                    "meta_format": "pov_caption",
+                 }},
+                # chunk 2: a different trend_reference (noise)
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                    "trend_reference": "unrelated_late_trend",
+                 }},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["meta_format"] == "pov_caption"
+        # trend_reference must NOT be pulled from chunk 0 or 2 (contradictory)
+        assert "trend_reference" not in merged["format"]
+
+    def test_chunk_level_secondary_archetype_unknown_dropped(self, fake_video_chunks, caplog):
+        """Round-3 Bug N4: hallucinated secondary_archetypes from a chunk
+        are validated against the canonical enum and dropped (not leaked)."""
+        import logging
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                    "secondary_archetypes": ["product_demo", "hallucinated_genre"],
+                 }},
+                {"format": {
+                    "format_category": "people_centric",
+                    "primary_archetype": "talking_head_studio",
+                    "production_style": "creator_prosumer",
+                 }},
+            ],
+        )
+        with caplog.at_level(logging.WARNING, logger="lib.analysis_merger"):
+            merged = merge_analyses(chunks, provider="gemini")
+        sec = merged["format"].get("secondary_archetypes", [])
+        # Valid one kept
+        assert "product_demo" in sec
+        # Hallucinated one dropped
+        assert "hallucinated_genre" not in sec
+        # Warning logged
+        assert any("hallucinated_genre" in rec.message for rec in caplog.records)

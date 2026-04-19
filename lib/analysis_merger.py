@@ -888,15 +888,24 @@ def _merge_format(
         key=lambda kv: (-kv[1], first_seen[kv[0]]),
     )[0][0]
 
-    # format_category: STRICT lookup (Gemini ruthless — fail loud on drift)
+    # format_category: STRICT lookup. Round-3: if the archetype is not in the
+    # canonical map we log and DROP the format block instead of raising across
+    # the whole merge (Gemini round-2 review — fail-graceful). The drift test
+    # (test_drift_invariant_schema_matches_archetype_map) still catches the
+    # map/schema mismatch at CI time.
     if primary not in _ARCHETYPE_TO_CATEGORY:
-        raise MergeConsensusError(
-            f"primary_archetype {primary!r} is not in _ARCHETYPE_TO_CATEGORY "
-            f"(schema/code drift — the map must include every enum value)."
+        logger.warning(
+            "format: primary_archetype %r not in _ARCHETYPE_TO_CATEGORY; "
+            "dropping format block (schema/code drift or hallucinated value).",
+            primary,
         )
+        return None
     category = _ARCHETYPE_TO_CATEGORY[primary]
 
     # secondary_archetypes: derived ∪ chunk-level (Codex Bug E).
+    # Round-3: chunk-emitted strings are validated against the canonical enum
+    # (`_ARCHETYPE_TO_CATEGORY` keys) so hallucinated values no longer leak
+    # through the merger and fail only at final validation (Codex Bug N4).
     derived = [
         a for a, s in share.items()
         if a != primary and s >= _SECONDARY_ARCHETYPE_THRESHOLD
@@ -906,7 +915,15 @@ def _merge_format(
     chunk_level_sec: list[str] = []
     for _, fmt, _w in indexed:
         for a in fmt.get("secondary_archetypes") or []:
-            if isinstance(a, str) and a != primary and a not in derived and a not in chunk_level_sec:
+            if not isinstance(a, str) or a == primary:
+                continue
+            if a not in _ARCHETYPE_TO_CATEGORY:
+                logger.warning(
+                    "format.secondary_archetypes: dropping unknown value %r "
+                    "from chunk (not in canonical enum).", a,
+                )
+                continue
+            if a not in derived and a not in chunk_level_sec:
                 chunk_level_sec.append(a)
     secondaries = derived + chunk_level_sec
 
@@ -922,8 +939,14 @@ def _merge_format(
         # None and fail the final validator late, drop the whole block.
         return None
 
-    # meta_format + trend_reference: paired from the same source chunk
-    # (Codex Bug F — avoids trend/meta contradiction).
+    # meta_format + trend_reference: strictly paired from the same source
+    # chunk to avoid axis contradiction (Codex Bug F).
+    # Round-3: REMOVED the global-fallback branch — if the chunk that wins
+    # meta_format has no trend_reference we leave trend_reference unset
+    # rather than pulling a (possibly contradictory) value from a different
+    # chunk. When no chunk has a meta_format, the first chunk with a
+    # standalone trend_reference is used (it cannot contradict a non-
+    # existent meta_format).
     meta_format: str | None = None
     trend_reference: str | None = None
     for _, fmt, _w in indexed:
@@ -934,10 +957,9 @@ def _merge_format(
             if isinstance(tr, str) and tr:
                 trend_reference = tr
             break
-    if trend_reference is None:
-        # meta_format absent or paired chunk lacked trend_reference —
-        # fall back to first non-null trend_reference (may still be useful
-        # even without an associated meta_format).
+    if meta_format is None:
+        # No chunk anchored a meta_format; a standalone trend_reference
+        # cannot contradict what is not there, so accept first non-null.
         for _, fmt, _w in indexed:
             tr = fmt.get("trend_reference")
             if isinstance(tr, str) and tr:
@@ -1027,21 +1049,34 @@ def _cue_value_matches_winner(
 ) -> bool:
     """Return True iff this cue should survive the value-aware filter.
 
-    Policy (Codex Bug A):
+    Round-3 policy (Codex + Gemini consensus):
+      * If ``merged_value`` is None — the grounded field was dropped from the
+        merged artifact (e.g. no format block). Orphaned evidence is useless
+        and confusing: DROP the cue (Gemini round-2 ruthless + Codex Bug N2).
       * For exact-enum paths (_STRING_CUE_PATHS): cue.value must equal the
         merged winner as a string; cues for losing alternatives are dropped.
-      * For structured paths (motion_type_distribution, color_palette):
-        we accept lenient — structured fields cannot always be reduced to
-        a single string tag. cue.value is kept as documentation; mismatch
-        does NOT drop the cue.
-      * If cue_value is absent (pre-v2.1 artifacts), keep the cue (no
-        binding to verify).
+      * For structured paths (motion_type_distribution, color_palette): the
+        merged winner is an object, not a string. We partition by cue.value
+        GROUP-LEVEL (see _merge_grounding_cues — it groups entries by
+        (path, value) and emits one merged cue per group). This function
+        just returns True for structured paths with a present merged
+        value — per-path grouping ensures consistent evidence downstream.
+      * If cue_value is absent (pre-v2.1 artifact with older cue shape),
+        only keep it if the path is not exact-enum (prevents leaking cues
+        that could not be bound to a value). Round-3: tighter than v2.1.
     """
+    if merged_value is None:
+        # Round-3 (Gemini ruthless): drop orphaned evidence for dropped fields.
+        return False
     if cue_value is None:
-        return True
+        # Pre-v2.1 cues lacking `value` — keep only on structured paths where
+        # we cannot verify; drop on exact-enum paths (Codex Bug N1).
+        return path not in _STRING_CUE_PATHS
     if path not in _STRING_CUE_PATHS:
+        # Structured path: keep here; partitioning by `value` happens in the
+        # grouping step so supports for different structured values never mix.
         return True
-    return str(cue_value) == str(merged_value) if merged_value is not None else True
+    return str(cue_value) == str(merged_value)
 
 
 def _merge_grounding_cues(
@@ -1098,8 +1133,12 @@ def _merge_grounding_cues(
         if not entries:
             continue
 
-        # Value-aware filter — drop cues whose value disagrees with the merged
-        # winner for exact-enum paths (Codex Bug A).
+        # Value-aware filter:
+        #   * For exact-enum paths (_STRING_CUE_PATHS): drop cues for losing
+        #     alternatives (cue.value != merged winner).
+        #   * For structured paths: keep cues whose value is present, drop
+        #     the whole group if the merged field is absent (Gemini ruthless
+        #     + Codex Bug N2).
         if merged is not None:
             winner = _get_at_dot_path(merged, path)
             filtered = [
@@ -1111,50 +1150,67 @@ def _merge_grounding_cues(
             if not entries:
                 continue
 
-        # Dedup support strings by semantic content; retain first-seen chunk
-        # of origin for each unique string.
-        seen: dict[str, int] = {}
+        # Round-3 — partition surviving cues by `value` so structured-path
+        # supports for different `value` tags never mix under an arbitrary
+        # winner (Codex Bug N3 / Gemini Issue 2).
+        groups: dict[str, list[tuple[int, dict]]] = {}
+        _order: list[str] = []  # preserve emission order (first-seen value)
         for i, entry in entries:
-            e_sup = entry.get("support")
-            if not isinstance(e_sup, list):
-                continue
-            for s in e_sup:
-                if not isinstance(s, str):
-                    continue
-                seen.setdefault(s, i)
-
-        if not seen:
-            continue  # schema requires >=1 support item
-
-        contributing_chunks = {ci for ci in seen.values()}
-        multi_chunk_contributes = multi and len(contributing_chunks) > 1
-        support = [
-            f"[chunk-{ci}] {s}" if multi_chunk_contributes else s
-            for s, ci in seen.items()
-        ]
-
-        # rejected: first non-empty from a SURVIVING (value-matched) cue
-        rejected: str | None = None
-        for _, entry in entries:
-            r = entry.get("rejected")
-            if isinstance(r, str) and r:
-                rejected = r
-                break
-
-        # value: take from first surviving cue (documentation)
-        value: str | None = None
-        for _, entry in entries:
             v = entry.get("value")
-            if isinstance(v, str) and v:
-                value = v
-                break
+            if not isinstance(v, str) or not v:
+                # Round-3: cues without a `value` can no longer survive
+                # the schema (v is required) — drop them (Codex Bug N1).
+                continue
+            if v not in groups:
+                groups[v] = []
+                _order.append(v)
+            groups[v].append((i, entry))
 
-        merged_entry: dict[str, Any] = {"field_path": path, "support": support}
-        if value:
-            merged_entry["value"] = value
-        if rejected:
-            merged_entry["rejected"] = rejected
-        out.append(merged_entry)
+        if not groups:
+            continue  # all cues lacked `value` — drop the field entirely
+
+        for value in _order:
+            bucket = groups[value]
+
+            # Dedup support strings by semantic content; retain first-seen
+            # chunk of origin. (Identical strings across chunks collapse —
+            # Gemini Issue H.)
+            seen: dict[str, int] = {}
+            for i, entry in bucket:
+                e_sup = entry.get("support")
+                if not isinstance(e_sup, list):
+                    continue
+                for s in e_sup:
+                    if not isinstance(s, str):
+                        continue
+                    seen.setdefault(s, i)
+
+            if not seen:
+                continue  # schema requires >=1 support item
+
+            contributing_chunks = set(seen.values())
+            multi_chunk_contributes = multi and len(contributing_chunks) > 1
+            support = [
+                f"[chunk-{ci}] {s}" if multi_chunk_contributes else s
+                for s, ci in seen.items()
+            ]
+
+            # rejected: first non-empty from a SURVIVING cue in this group
+            rejected: str | None = None
+            for _, entry in bucket:
+                r = entry.get("rejected")
+                if isinstance(r, str) and r:
+                    rejected = r
+                    break
+
+            merged_entry: dict[str, Any] = {
+                "field_path": path,
+                "value": value,
+                "support": support,
+            }
+            if rejected:
+                merged_entry["rejected"] = rejected
+            out.append(merged_entry)
 
     return out or None
 

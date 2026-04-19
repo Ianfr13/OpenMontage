@@ -403,25 +403,8 @@
         },
         "secondary_archetypes": {
           "type": "array",
-          "description": "Other archetypes that cover >=20% of runtime in multi-format videos.",
-          "items": {
-            "type": "string",
-            "enum": [
-              "talking_head_studio", "fake_podcast_clip", "green_screen_talking_head",
-              "finfluencer_explainer", "street_interview", "duet_reaction",
-              "reaction_video", "split_screen_collab", "mockumentary",
-              "grwm_routine", "day_in_the_life", "vlog_lifestyle",
-              "work_with_me", "study_with_me", "pov_experience",
-              "micro_drama", "cinematic_short", "storytime",
-              "before_after_transformation", "tutorial_screencast", "product_demo",
-              "listicle_ranking", "whiteboard_explainer", "unboxing",
-              "cartoon_2d", "cartoon_3d", "anime", "motion_graphics",
-              "kinetic_typography", "stop_motion", "ai_video_realistic",
-              "ai_video_stylized", "ai_asmr_surreal", "stock_footage_narrated",
-              "documentary", "sports_micro_highlight", "asmr_tactile",
-              "photo_carousel_video", "mixed_media"
-            ]
-          }
+          "description": "Other archetypes that cover >=20% of runtime in multi-format videos. The items are typed as free-form strings (not enum'd) so the structured-output schema stays under Gemini's state-machine compile limit when combined with primary_archetype's 39-value enum. Values are validated against the canonical enum inside the merger (see `_merge_format` Bug N4 guard).",
+          "items": { "type": "string" }
         },
         "production_style": {
           "type": "string",

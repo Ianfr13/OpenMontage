@@ -235,20 +235,38 @@ Grounding: every non-trivial field value must be traceable to an observable
 cue — a specific timestamp, a visible frame element, an audible line.
 
 grounding_cues emission (REQUIRED in full mode): emit a top-level
-`grounding_cues` array with one object per high-leverage field. Shape:
+`grounding_cues` array with one object per high-leverage field. Each entry
+MUST include `value` — a string tag of the specific value this evidence
+supports. `value` binds the evidence to one decision so that downstream
+multi-chunk merging can drop cues belonging to a rejected alternative.
+Shape:
   "grounding_cues": [
     {{
       "field_path": "narrative.hook_type",
+      "value": "bold_claim",
       "support": ["0:00-0:03 narrator: 'Most people are wrong...'"],
       "rejected": "question — phrased as statement, not literal question"
     }},
     {{
       "field_path": "editing_pacing.motion_type_distribution",
+      "value": "motion_clip_dominant",
       "support": ["12 of 14 shots show subject-internal motion",
                   "0:14-0:17 particles move independent of camera"],
       "rejected": "animated_still — rejected: subjects themselves move"
     }}
   ]
+
+`value` encoding:
+  * For enum fields (pacing_style, hook_type, narrative_arc,
+    suggested_playbook, primary_archetype, production_style):
+    emit the exact enum string you selected.
+  * For motion_type_distribution: emit the DOMINANT key with suffix
+    "_dominant" (e.g. "motion_clip_dominant", "animated_still_dominant").
+  * For color_palette: emit a short tag like "warm_amber", "cool_cyan",
+    "high_contrast_dark" — any stable string that identifies the palette
+    character. The merger treats color_palette cues leniently (keeps them
+    even on mismatch) because structured palettes cannot always be
+    reduced to a single string; the string is mainly documentation.
 
 Allowed `field_path` values (enum — any other path is rejected by the schema):
   editing_pacing.pacing_style

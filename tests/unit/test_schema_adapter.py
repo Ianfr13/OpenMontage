@@ -222,7 +222,9 @@ class TestSchemaExtensionV2_1:
         gc = api["properties"]["grounding_cues"]
         assert gc["type"] == "array"
         assert gc["items"]["type"] == "object"
-        assert set(gc["items"]["required"]) == {"field_path", "support"}
+        # Round 2: `value` is required so multi-chunk merger can drop cues
+        # bound to a rejected alternative (Codex Bug A).
+        assert set(gc["items"]["required"]) == {"field_path", "value", "support"}
 
     def test_grounding_cues_field_path_restricted_to_allowlist(self):
         from schemas.artifacts import load_schema

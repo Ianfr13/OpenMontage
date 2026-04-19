@@ -474,7 +474,7 @@
       "description": "Timestamp-anchored evidence for high-leverage fields. One entry per grounded field. Optional in v2.1; required in v3.0.",
       "items": {
         "type": "object",
-        "required": ["field_path", "support"],
+        "required": ["field_path", "value", "support"],
         "properties": {
           "field_path": {
             "type": "string",
@@ -489,6 +489,10 @@
               "format.primary_archetype",
               "format.production_style"
             ]
+          },
+          "value": {
+            "type": "string",
+            "description": "String tag of the specific value this evidence supports. For enum fields, the enum string. For structured fields (e.g. motion_type_distribution, color_palette), a short string tag (e.g. 'motion_clip_dominant' or 'warm_amber'). Binds the evidence to one decision so the multi-chunk merger can drop cues for rejected values."
           },
           "support": {
             "type": "array",

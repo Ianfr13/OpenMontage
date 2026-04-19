@@ -829,21 +829,26 @@ def _merge_format(
 ) -> dict | None:
     """Merge per-chunk ``format`` objects into a single classification.
 
-    Returns None when no chunk provides ``format`` — caller should then omit
-    the field from the merged artifact (it is optional in v2.1).
+    Returns None when no chunk provides ``format`` OR when the merge cannot
+    produce a schema-valid block (e.g. no chunk supplies ``production_style``).
+    Caller then omits the field.
 
-    Strategy (consolidated from Codex + Gemini peer review):
-      * Compute a runtime-share distribution of primary_archetype values.
-      * primary_archetype = argmax(distribution). Tie-break: first chunk.
-      * secondary_archetypes = all archetypes with share >=0.20 other than
-        primary. Hides winner-take-all pathology on mixed-format videos.
-      * format_category derived from primary_archetype via the canonical map
-        (avoids model-level disagreement on the axis-to-archetype mapping).
-      * production_style: duration-weighted majority (ties -> first chunk).
-      * meta_format: first non-absent across chunks; OMITTED when all absent.
-      * ugc_score: duration-weighted average (uses _weighted_avg).
-      * trend_reference: first non-null string across chunks.
-      * confidence: worst-confidence map (same rule as other dimensions).
+    Strategy (consolidated from Codex + Gemini peer review — round 2):
+      * primary_archetype: argmax of runtime-share distribution. Tie-break:
+        first chunk.
+      * secondary_archetypes: union of (a) archetypes with share >=0.20 other
+        than primary, and (b) secondary_archetypes emitted INSIDE individual
+        chunks (intra-chunk mixtures) — deduped, derived ones first.
+      * format_category: derived STRICTLY from ``_ARCHETYPE_TO_CATEGORY``;
+        unmapped archetype raises MergeConsensusError (drift guard — Gemini).
+      * production_style: duration-weighted majority; if unresolvable,
+        return None from the whole function (fail-safe — Gemini Bug D).
+      * meta_format: first non-absent across chunks. trend_reference pairs
+        with the SAME chunk (fixes Codex Bug F — no contradiction between
+        the two trend axes).
+      * ugc_score: duration-weighted average.
+      * confidence: worst-confidence map (explicit default {} removed —
+        Gemini Bug C — dropped chunks no longer count as implicit high).
     """
     # Collect per-chunk format blocks; skip chunks without one
     indexed: list[tuple[int, dict, float]] = []
@@ -868,50 +873,76 @@ def _merge_format(
 
     if not share:
         # Chunks declared format but none has a valid primary_archetype.
-        # Nothing useful to merge — omit the field.
         return None
 
-    # Normalize shares; argmax with deterministic tie-break (highest share,
-    # then earliest chunk)
+    # Normalize shares. Zero-weight fallback: uniform over observed archetypes
+    # (Gemini Issue I — guards a theoretical edge where chunk weights are 0).
     if total_w > 0:
         share = {k: v / total_w for k, v in share.items()}
+    else:
+        n = len(share)
+        share = {k: 1.0 / n for k in share} if n else {}
+
     primary = sorted(
         share.items(),
         key=lambda kv: (-kv[1], first_seen[kv[0]]),
     )[0][0]
 
-    secondaries = sorted(
-        [a for a, s in share.items() if a != primary and s >= _SECONDARY_ARCHETYPE_THRESHOLD],
-        key=lambda a: (-share[a], first_seen[a]),
-    )
+    # format_category: STRICT lookup (Gemini ruthless — fail loud on drift)
+    if primary not in _ARCHETYPE_TO_CATEGORY:
+        raise MergeConsensusError(
+            f"primary_archetype {primary!r} is not in _ARCHETYPE_TO_CATEGORY "
+            f"(schema/code drift — the map must include every enum value)."
+        )
+    category = _ARCHETYPE_TO_CATEGORY[primary]
 
-    # format_category: derive from primary_archetype (canonical mapping).
-    # Falls back to weighted-majority of emitted categories if the archetype
-    # is somehow unmapped (should not happen — archetype enum is closed).
-    category = _ARCHETYPE_TO_CATEGORY.get(primary)
-    if category is None:
-        cat_pairs: list[tuple[Any, float]] = [
-            (fmt.get("format_category"), w)
-            for _, fmt, w in indexed
-            if fmt.get("format_category")
-        ]
-        category = _weighted_majority(cat_pairs) if cat_pairs else None
+    # secondary_archetypes: derived ∪ chunk-level (Codex Bug E).
+    derived = [
+        a for a, s in share.items()
+        if a != primary and s >= _SECONDARY_ARCHETYPE_THRESHOLD
+    ]
+    derived.sort(key=lambda a: (-share[a], first_seen[a]))
 
-    # production_style: weighted majority
+    chunk_level_sec: list[str] = []
+    for _, fmt, _w in indexed:
+        for a in fmt.get("secondary_archetypes") or []:
+            if isinstance(a, str) and a != primary and a not in derived and a not in chunk_level_sec:
+                chunk_level_sec.append(a)
+    secondaries = derived + chunk_level_sec
+
+    # production_style: weighted majority; None -> drop whole block (Gemini Bug D)
     ps_pairs: list[tuple[Any, float]] = [
         (fmt.get("production_style"), w)
         for _, fmt, w in indexed
         if fmt.get("production_style")
     ]
     production_style = _weighted_majority(ps_pairs) if ps_pairs else None
+    if production_style is None:
+        # Schema requires production_style as a string enum. Rather than emit
+        # None and fail the final validator late, drop the whole block.
+        return None
 
-    # meta_format: first non-absent (schema now omits "none")
-    meta_format = None
+    # meta_format + trend_reference: paired from the same source chunk
+    # (Codex Bug F — avoids trend/meta contradiction).
+    meta_format: str | None = None
+    trend_reference: str | None = None
     for _, fmt, _w in indexed:
         mf = fmt.get("meta_format")
         if mf:
             meta_format = mf
+            tr = fmt.get("trend_reference")
+            if isinstance(tr, str) and tr:
+                trend_reference = tr
             break
+    if trend_reference is None:
+        # meta_format absent or paired chunk lacked trend_reference —
+        # fall back to first non-null trend_reference (may still be useful
+        # even without an associated meta_format).
+        for _, fmt, _w in indexed:
+            tr = fmt.get("trend_reference")
+            if isinstance(tr, str) and tr:
+                trend_reference = tr
+                break
 
     # ugc_score: duration-weighted average
     score_pairs = [
@@ -921,26 +952,20 @@ def _merge_format(
     ]
     ugc_score = _weighted_avg(score_pairs) if score_pairs else None
 
-    # trend_reference: first non-null string
-    trend_reference = None
-    for _, fmt, _w in indexed:
-        tr = fmt.get("trend_reference")
-        if isinstance(tr, str) and tr:
-            trend_reference = tr
-            break
-
-    # confidence: worst-confidence across all chunks' format.confidence maps
+    # confidence: worst-confidence across all chunks that emitted one
+    # (Gemini Bug C — removed dead default; intent is explicit).
     confidence_maps = [
-        fmt.get("confidence", {}) for _, fmt, _w in indexed if isinstance(fmt.get("confidence"), dict)
+        fmt["confidence"]
+        for _, fmt, _w in indexed
+        if isinstance(fmt.get("confidence"), dict)
     ]
     confidence = _merge_confidence_map(confidence_maps) if confidence_maps else {}
 
     out: dict[str, Any] = {
+        "format_category": category,
         "primary_archetype": primary,
         "production_style": production_style,
     }
-    if category is not None:
-        out["format_category"] = category
     if secondaries:
         out["secondary_archetypes"] = secondaries
     if meta_format:
@@ -959,21 +984,86 @@ def _merge_format(
 # ---------------------------------------------------------------------------
 
 
+# Canonical grounding_cues field_path order (used as the primary sort key).
+# Unknown paths (future high-leverage fields added to the schema) are sorted
+# alphabetically AFTER the canonical set so they are never silently dropped
+# — see Codex Bug G / Gemini Issue 4.
+_CANONICAL_CUE_PATHS = (
+    "editing_pacing.pacing_style",
+    "editing_pacing.motion_type_distribution",
+    "visual_style.color_palette",
+    "visual_style.suggested_playbook",
+    "narrative.hook_type",
+    "narrative.narrative_arc",
+    "format.primary_archetype",
+    "format.production_style",
+)
+
+# For these paths the merged winner is an exact string (enum). cue.value must
+# match it or the cue is treated as grounding a REJECTED alternative and
+# dropped — see Codex Bug A.
+_STRING_CUE_PATHS = frozenset({
+    "editing_pacing.pacing_style",
+    "visual_style.suggested_playbook",
+    "narrative.hook_type",
+    "narrative.narrative_arc",
+    "format.primary_archetype",
+    "format.production_style",
+})
+
+
+def _get_at_dot_path(node: Any, path: str) -> Any:
+    """Return ``node`` descended by dot-separated ``path``; None if missing."""
+    cur: Any = node
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
+def _cue_value_matches_winner(
+    cue_value: Any, merged_value: Any, path: str
+) -> bool:
+    """Return True iff this cue should survive the value-aware filter.
+
+    Policy (Codex Bug A):
+      * For exact-enum paths (_STRING_CUE_PATHS): cue.value must equal the
+        merged winner as a string; cues for losing alternatives are dropped.
+      * For structured paths (motion_type_distribution, color_palette):
+        we accept lenient — structured fields cannot always be reduced to
+        a single string tag. cue.value is kept as documentation; mismatch
+        does NOT drop the cue.
+      * If cue_value is absent (pre-v2.1 artifacts), keep the cue (no
+        binding to verify).
+    """
+    if cue_value is None:
+        return True
+    if path not in _STRING_CUE_PATHS:
+        return True
+    return str(cue_value) == str(merged_value) if merged_value is not None else True
+
+
 def _merge_grounding_cues(
     chunks: list[tuple[Chunk, dict]],
+    merged: dict | None = None,
 ) -> list[dict] | None:
     """Merge per-chunk ``grounding_cues`` arrays into a single array.
 
     Returns None when no chunk emitted the field (caller omits the array).
 
-    Strategy: group entries by ``field_path``. For each path:
-      * Concatenate ``support`` arrays across chunks. When more than one
-        chunk contributes to the same path AND there are multiple chunks
-        total, prefix each support string with ``"[chunk-{i}] "`` so the
-        downstream reader can see the origin.
-      * Keep the first non-empty ``rejected`` value (later chunks may
-        disagree; the first is typically the one grounding the video-wide
-        opening decision).
+    Round-2 strategy (Codex + Gemini peer review):
+      * Group by ``field_path``. VALUE-AWARE filtering: when ``merged`` is
+        supplied, cues whose ``value`` disagrees with the merged winner for
+        exact-enum paths are DROPPED — evidence no longer attaches to a
+        rejected alternative (Codex Bug A).
+      * Support strings are deduped across chunks by semantic content. The
+        ``[chunk-N]`` prefix is applied only when multiple chunks actually
+        contribute after dedup (Gemini Issue H).
+      * Paths are emitted in canonical order first, then any extra paths
+        (e.g. future high-leverage fields) alphabetically — never silently
+        dropped (Codex Bug G / Gemini Issue 4).
+      * ``rejected`` keeps the first non-empty value from a surviving cue.
     """
     per_path: dict[str, list[tuple[int, dict]]] = {}
     any_emitted = False
@@ -995,38 +1085,73 @@ def _merge_grounding_cues(
 
     multi = len(chunks) > 1
     out: list[dict] = []
-    # Emit paths in the canonical allowlist order for deterministic output
-    canonical_order = [
-        "editing_pacing.pacing_style",
-        "editing_pacing.motion_type_distribution",
-        "visual_style.color_palette",
-        "visual_style.suggested_playbook",
-        "narrative.hook_type",
-        "narrative.narrative_arc",
-        "format.primary_archetype",
-        "format.production_style",
-    ]
-    for path in canonical_order:
+
+    # Emit canonical paths first, then any extras (alphabetical) — so new
+    # high-leverage fields added to the schema are not silently dropped by
+    # this merger.
+    ordered_paths: list[str] = [p for p in _CANONICAL_CUE_PATHS if p in per_path]
+    extras = sorted(p for p in per_path if p not in _CANONICAL_CUE_PATHS)
+    ordered_paths.extend(extras)
+
+    for path in ordered_paths:
         entries = per_path.get(path, [])
         if not entries:
             continue
-        support: list[str] = []
-        rejected: str | None = None
-        multi_chunk_contributes = multi and len({i for i, _ in entries}) > 1
+
+        # Value-aware filter — drop cues whose value disagrees with the merged
+        # winner for exact-enum paths (Codex Bug A).
+        if merged is not None:
+            winner = _get_at_dot_path(merged, path)
+            filtered = [
+                (i, entry)
+                for i, entry in entries
+                if _cue_value_matches_winner(entry.get("value"), winner, path)
+            ]
+            entries = filtered
+            if not entries:
+                continue
+
+        # Dedup support strings by semantic content; retain first-seen chunk
+        # of origin for each unique string.
+        seen: dict[str, int] = {}
         for i, entry in entries:
             e_sup = entry.get("support")
-            if isinstance(e_sup, list):
-                for s in e_sup:
-                    if not isinstance(s, str):
-                        continue
-                    support.append(f"[chunk-{i}] {s}" if multi_chunk_contributes else s)
-            if rejected is None:
-                r = entry.get("rejected")
-                if isinstance(r, str) and r:
-                    rejected = r
-        if not support:
+            if not isinstance(e_sup, list):
+                continue
+            for s in e_sup:
+                if not isinstance(s, str):
+                    continue
+                seen.setdefault(s, i)
+
+        if not seen:
             continue  # schema requires >=1 support item
+
+        contributing_chunks = {ci for ci in seen.values()}
+        multi_chunk_contributes = multi and len(contributing_chunks) > 1
+        support = [
+            f"[chunk-{ci}] {s}" if multi_chunk_contributes else s
+            for s, ci in seen.items()
+        ]
+
+        # rejected: first non-empty from a SURVIVING (value-matched) cue
+        rejected: str | None = None
+        for _, entry in entries:
+            r = entry.get("rejected")
+            if isinstance(r, str) and r:
+                rejected = r
+                break
+
+        # value: take from first surviving cue (documentation)
+        value: str | None = None
+        for _, entry in entries:
+            v = entry.get("value")
+            if isinstance(v, str) and v:
+                value = v
+                break
+
         merged_entry: dict[str, Any] = {"field_path": path, "support": support}
+        if value:
+            merged_entry["value"] = value
         if rejected:
             merged_entry["rejected"] = rejected
         out.append(merged_entry)
@@ -1230,8 +1355,10 @@ def merge_analyses(
     if fmt is not None:
         merged["format"] = fmt
 
-    # grounding_cues (v2.1+, optional — omit when no chunk emitted it)
-    gc = _merge_grounding_cues(chunks)
+    # grounding_cues (v2.1+, optional — omit when no chunk emitted it).
+    # Pass `merged` so the value-aware filter can drop cues whose stated
+    # `value` disagrees with the merged winner (Codex Bug A).
+    gc = _merge_grounding_cues(chunks, merged=merged)
     if gc is not None:
         merged["grounding_cues"] = gc
 

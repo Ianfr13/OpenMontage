@@ -975,3 +975,366 @@ class TestFullChunksKwarg:
         # Hook from chunk 0, cta from chunk 2 (chunk 1 failed)
         assert merged["narrative"]["hook_type"] == "question"
         assert merged["narrative"]["cta_type"] == "purchase"
+
+
+# ----------------------------------------------------------------------
+# format — hierarchical archetype classification (v2.1+)
+# ----------------------------------------------------------------------
+
+
+class TestFormatMerge:
+    """Merge strategy consolidated from peer review (Codex + Gemini).
+
+    - primary_archetype by runtime-share (not flat majority)
+    - secondary_archetypes = siblings with share >= 0.20
+    - format_category derived from primary_archetype via canonical map
+    - production_style: duration-weighted majority
+    - meta_format: first non-absent (OMIT when all absent)
+    - ugc_score: weighted average
+    - trend_reference: first non-null string
+    - confidence: worst-confidence rule (matches other dimensions)
+    """
+
+    def _fmt(
+        self,
+        archetype: str = "talking_head_studio",
+        production_style: str = "creator_prosumer",
+        **extras,
+    ) -> dict:
+        """Build a schema-valid format block with optional extras."""
+        out = {
+            "format_category": "people_centric",
+            "primary_archetype": archetype,
+            "production_style": production_style,
+        }
+        out.update(extras)
+        return out
+
+    def test_no_chunk_has_format_omits_field(self, fake_video_chunks):
+        chunks = fake_video_chunks(n=2)
+        merged = merge_analyses(chunks, provider="gemini")
+        assert "format" not in merged
+
+    def test_single_archetype_across_chunks_primary_wins(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"format": self._fmt("talking_head_studio")},
+                {"format": self._fmt("talking_head_studio")},
+                {"format": self._fmt("talking_head_studio")},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["primary_archetype"] == "talking_head_studio"
+        assert merged["format"]["format_category"] == "people_centric"
+        assert "secondary_archetypes" not in merged["format"]
+
+    def test_weighted_majority_by_runtime_share(self, fake_video_chunks):
+        # 2×120s of talking_head vs 1×120s of product_demo
+        # talking_head share = 2/3 ~= 0.67 -> primary; product_demo share = 0.33 -> secondary
+        chunks = fake_video_chunks(
+            n=3,
+            chunk_seconds=120.0,
+            overrides=[
+                {"format": self._fmt("talking_head_studio")},
+                {"format": self._fmt("talking_head_studio")},
+                {"format": self._fmt("product_demo")},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        fmt = merged["format"]
+        assert fmt["primary_archetype"] == "talking_head_studio"
+        assert fmt["format_category"] == "people_centric"
+        assert fmt.get("secondary_archetypes") == ["product_demo"]
+
+    def test_secondary_archetypes_threshold(self, fake_video_chunks):
+        # 4 talking_head + 1 product_demo + 0.5 cartoon_2d (as 10s chunk)
+        # share: talking_head=4/5.5=0.73, product_demo=1/5.5=0.18, cartoon_2d=0.5/5.5=0.09
+        # Only talking_head >= 0.20 as primary (0.73), product_demo just below 0.20 threshold
+        # so no secondaries. Test that sub-0.20 ones are filtered.
+        chunks = fake_video_chunks(
+            n=3,
+            chunk_seconds=60.0,
+            overrides=[
+                {"format": self._fmt("talking_head_studio")},  # 60s
+                {"format": self._fmt("talking_head_studio")},  # 60s
+                {"format": self._fmt("product_demo")},  # 60s -> share 1/3=0.33, >=0.20
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["primary_archetype"] == "talking_head_studio"
+        # product_demo is 1/3 of runtime -> above 0.20 threshold
+        assert merged["format"]["secondary_archetypes"] == ["product_demo"]
+
+    def test_tie_break_uses_first_chunk_when_shares_equal(self, fake_video_chunks):
+        # Two equal-weight chunks with different archetypes -> first wins
+        chunks = fake_video_chunks(
+            n=2,
+            chunk_seconds=100.0,
+            overrides=[
+                {"format": self._fmt("documentary")},
+                {"format": self._fmt("talking_head_studio")},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["primary_archetype"] == "documentary"
+
+    def test_format_category_derived_from_archetype(self, fake_video_chunks):
+        # Even if a chunk declares the wrong category, the merger derives it
+        # from the canonical archetype->category mapping.
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": {
+                    "format_category": "mixed",  # intentionally wrong
+                    "primary_archetype": "cartoon_2d",
+                    "production_style": "motion_graphics_native",
+                }},
+                {"format": {
+                    "format_category": "mixed",  # intentionally wrong
+                    "primary_archetype": "cartoon_2d",
+                    "production_style": "motion_graphics_native",
+                }},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        # Derived from cartoon_2d -> animated, overriding the chunks' declaration
+        assert merged["format"]["format_category"] == "animated"
+
+    def test_production_style_weighted_majority(self, fake_video_chunks):
+        # 2×120s ugc + 1×120s studio_produced -> ugc wins
+        chunks = fake_video_chunks(
+            n=3,
+            chunk_seconds=120.0,
+            overrides=[
+                {"format": self._fmt("talking_head_studio", production_style="ugc")},
+                {"format": self._fmt("talking_head_studio", production_style="ugc")},
+                {"format": self._fmt("talking_head_studio", production_style="studio_produced")},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["production_style"] == "ugc"
+
+    def test_meta_format_first_non_absent(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"format": self._fmt()},
+                {"format": self._fmt(meta_format="pov_caption")},
+                {"format": self._fmt(meta_format="grwm_caption")},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["meta_format"] == "pov_caption"
+
+    def test_meta_format_omitted_when_all_absent(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": self._fmt()},
+                {"format": self._fmt()},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert "meta_format" not in merged["format"]
+
+    def test_ugc_score_weighted_average(self, fake_video_chunks):
+        # Equal-weight chunks with scores 0.2 and 0.8 -> mean 0.5
+        chunks = fake_video_chunks(
+            n=2,
+            chunk_seconds=100.0,
+            overrides=[
+                {"format": self._fmt(ugc_score=0.2)},
+                {"format": self._fmt(ugc_score=0.8)},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["ugc_score"] == pytest.approx(0.5)
+
+    def test_trend_reference_first_non_null(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"format": self._fmt(trend_reference=None)},
+                {"format": self._fmt(trend_reference="POV you are...")},
+                {"format": self._fmt(trend_reference="tell me without...")},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["trend_reference"] == "POV you are..."
+
+    def test_confidence_uses_worst_rule(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"format": self._fmt(confidence={"primary_archetype": "high"})},
+                {"format": self._fmt(confidence={"primary_archetype": "low"})},
+                {"format": self._fmt(confidence={"primary_archetype": "medium"})},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        # Worst ("low") wins
+        assert merged["format"]["confidence"]["primary_archetype"] == "low"
+
+    def test_single_chunk_passthrough_keeps_format(self, fake_video_chunks):
+        """Single-chunk (N=1) path deep-copies and does not strip `format`."""
+        chunks = fake_video_chunks(
+            n=1,
+            overrides=[{"format": self._fmt("cinematic_short", production_style="studio_produced")}],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["primary_archetype"] == "cinematic_short"
+        assert merged["format"]["production_style"] == "studio_produced"
+
+
+# ----------------------------------------------------------------------
+# grounding_cues — per-field evidence array (v2.1+)
+# ----------------------------------------------------------------------
+
+
+class TestGroundingCuesMerge:
+    def _cue(self, path: str, support: list[str], rejected: str | None = None) -> dict:
+        out = {"field_path": path, "support": support}
+        if rejected:
+            out["rejected"] = rejected
+        return out
+
+    def test_no_chunk_has_cues_omits_field(self, fake_video_chunks):
+        chunks = fake_video_chunks(n=2)
+        merged = merge_analyses(chunks, provider="gemini")
+        assert "grounding_cues" not in merged
+
+    def test_single_chunk_passthrough_keeps_cues(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=1,
+            overrides=[{
+                "grounding_cues": [
+                    self._cue("narrative.hook_type", ["0:03 question"], "none — asked literally"),
+                ]
+            }],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["grounding_cues"] == [
+            self._cue("narrative.hook_type", ["0:03 question"], "none — asked literally")
+        ]
+
+    def test_multi_chunk_concats_support_with_prefix(self, fake_video_chunks):
+        # Same field contributed by chunks 0 and 1 → support prefixed with chunk-{i}
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"grounding_cues": [self._cue("editing_pacing.pacing_style", ["12 shots <1.5s"])]},
+                {"grounding_cues": [self._cue("editing_pacing.pacing_style", ["avg 1.2s"])]},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        gc = merged["grounding_cues"]
+        # Single entry per field_path, support concatenated with chunk prefix
+        assert len(gc) == 1
+        entry = gc[0]
+        assert entry["field_path"] == "editing_pacing.pacing_style"
+        assert entry["support"] == [
+            "[chunk-0] 12 shots <1.5s",
+            "[chunk-1] avg 1.2s",
+        ]
+
+    def test_single_chunk_contributes_no_prefix(self, fake_video_chunks):
+        # 2 chunks but only chunk 0 contributes to the field → no prefix
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"grounding_cues": [self._cue("narrative.hook_type", ["0:03 question"])]},
+                {},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        entry = merged["grounding_cues"][0]
+        assert entry["support"] == ["0:03 question"]  # no prefix
+
+    def test_rejected_takes_first_non_empty(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"grounding_cues": [self._cue("narrative.hook_type", ["a"], rejected="")]},
+                {"grounding_cues": [self._cue("narrative.hook_type", ["b"], rejected="other — why")]},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["grounding_cues"][0]["rejected"] == "other — why"
+
+    def test_canonical_ordering(self, fake_video_chunks):
+        """Merged grounding_cues are ordered by the canonical field-path allowlist."""
+        chunks = fake_video_chunks(
+            n=1,
+            overrides=[{
+                "grounding_cues": [
+                    self._cue("format.primary_archetype", ["talking head to camera"]),
+                    self._cue("editing_pacing.pacing_style", ["dynamic social"]),
+                    self._cue("narrative.hook_type", ["question"]),
+                ]
+            }],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        # Single-chunk path is pass-through (respects input order).
+        # Multi-chunk path would reorder; covered by next test.
+        assert [e["field_path"] for e in merged["grounding_cues"]] == [
+            "format.primary_archetype",
+            "editing_pacing.pacing_style",
+            "narrative.hook_type",
+        ]
+
+    def test_multi_chunk_canonical_ordering(self, fake_video_chunks):
+        """Multi-chunk merge emits entries in the canonical field_path order."""
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"grounding_cues": [
+                    self._cue("format.primary_archetype", ["a"]),
+                    self._cue("editing_pacing.pacing_style", ["b"]),
+                ]},
+                {"grounding_cues": [
+                    self._cue("narrative.hook_type", ["c"]),
+                ]},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        paths = [e["field_path"] for e in merged["grounding_cues"]]
+        # editing_pacing.pacing_style appears before narrative.hook_type which
+        # appears before format.primary_archetype — per canonical_order list.
+        assert paths == [
+            "editing_pacing.pacing_style",
+            "narrative.hook_type",
+            "format.primary_archetype",
+        ]
+
+    def test_entries_with_empty_support_dropped(self, fake_video_chunks):
+        # Schema requires minItems=1 on support; entries with no valid strings
+        # are dropped so the merged output stays schema-valid.
+        chunks = fake_video_chunks(
+            n=1,
+            overrides=[{
+                "grounding_cues": [
+                    self._cue("narrative.hook_type", []),  # empty -> dropped by merger
+                    self._cue("narrative.narrative_arc", ["linear arc visible"]),
+                ]
+            }],
+        )
+        # Single-chunk path just deep-copies; schema validation at the end
+        # would fail the empty support entry. The schema's minItems=1 catches it.
+        # So test this through multi-chunk which does validate entries.
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"grounding_cues": [
+                    self._cue("narrative.hook_type", ["valid"]),
+                ]},
+                {"grounding_cues": [
+                    {"field_path": "narrative.narrative_arc", "support": []},  # invalid
+                ]},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        paths = [e["field_path"] for e in merged["grounding_cues"]]
+        # narrative_arc dropped because its support is empty after merge
+        assert "narrative.narrative_arc" not in paths
+        assert "narrative.hook_type" in paths

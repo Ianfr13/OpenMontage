@@ -766,6 +766,275 @@ def _merge_narrative(
 
 
 # ---------------------------------------------------------------------------
+# format — hierarchical archetype classification (schema v2.1+)
+# ---------------------------------------------------------------------------
+
+# primary_archetype -> format_category (for cross-check and derivation).
+# Keep in sync with schemas/artifacts/video_analysis.schema.json.
+_ARCHETYPE_TO_CATEGORY: dict[str, str] = {
+    # people_centric
+    "talking_head_studio": "people_centric",
+    "fake_podcast_clip": "people_centric",
+    "green_screen_talking_head": "people_centric",
+    "finfluencer_explainer": "people_centric",
+    "street_interview": "people_centric",
+    "duet_reaction": "people_centric",
+    "reaction_video": "people_centric",
+    "split_screen_collab": "people_centric",
+    "mockumentary": "people_centric",
+    # companion_lifestyle
+    "grwm_routine": "companion_lifestyle",
+    "day_in_the_life": "companion_lifestyle",
+    "vlog_lifestyle": "companion_lifestyle",
+    "work_with_me": "companion_lifestyle",
+    "study_with_me": "companion_lifestyle",
+    # narrative_dramatic
+    "pov_experience": "narrative_dramatic",
+    "micro_drama": "narrative_dramatic",
+    "cinematic_short": "narrative_dramatic",
+    "storytime": "narrative_dramatic",
+    "before_after_transformation": "narrative_dramatic",
+    # educational_commercial
+    "tutorial_screencast": "educational_commercial",
+    "product_demo": "educational_commercial",
+    "listicle_ranking": "educational_commercial",
+    "whiteboard_explainer": "educational_commercial",
+    "unboxing": "educational_commercial",
+    # animated
+    "cartoon_2d": "animated",
+    "cartoon_3d": "animated",
+    "anime": "animated",
+    "motion_graphics": "animated",
+    "kinetic_typography": "animated",
+    "stop_motion": "animated",
+    # ai_generated
+    "ai_video_realistic": "ai_generated",
+    "ai_video_stylized": "ai_generated",
+    "ai_asmr_surreal": "ai_generated",
+    # footage_based
+    "stock_footage_narrated": "footage_based",
+    "documentary": "footage_based",
+    "sports_micro_highlight": "footage_based",
+    # sensory / platform_native / mixed
+    "asmr_tactile": "sensory",
+    "photo_carousel_video": "platform_native",
+    "mixed_media": "mixed",
+}
+
+_SECONDARY_ARCHETYPE_THRESHOLD = 0.20  # >=20% runtime share surfaces as secondary
+
+
+def _merge_format(
+    chunks: list[tuple[Chunk, dict]], weights: list[float]
+) -> dict | None:
+    """Merge per-chunk ``format`` objects into a single classification.
+
+    Returns None when no chunk provides ``format`` — caller should then omit
+    the field from the merged artifact (it is optional in v2.1).
+
+    Strategy (consolidated from Codex + Gemini peer review):
+      * Compute a runtime-share distribution of primary_archetype values.
+      * primary_archetype = argmax(distribution). Tie-break: first chunk.
+      * secondary_archetypes = all archetypes with share >=0.20 other than
+        primary. Hides winner-take-all pathology on mixed-format videos.
+      * format_category derived from primary_archetype via the canonical map
+        (avoids model-level disagreement on the axis-to-archetype mapping).
+      * production_style: duration-weighted majority (ties -> first chunk).
+      * meta_format: first non-absent across chunks; OMITTED when all absent.
+      * ugc_score: duration-weighted average (uses _weighted_avg).
+      * trend_reference: first non-null string across chunks.
+      * confidence: worst-confidence map (same rule as other dimensions).
+    """
+    # Collect per-chunk format blocks; skip chunks without one
+    indexed: list[tuple[int, dict, float]] = []
+    for i, ((_, art), w) in enumerate(zip(chunks, weights)):
+        fmt = art.get("format")
+        if isinstance(fmt, dict):
+            indexed.append((i, fmt, w))
+    if not indexed:
+        return None
+
+    # primary_archetype distribution by runtime share
+    share: dict[str, float] = {}
+    first_seen: dict[str, int] = {}  # for deterministic tie-break
+    total_w = 0.0
+    for i, fmt, w in indexed:
+        arch = fmt.get("primary_archetype")
+        if not arch:
+            continue
+        share[arch] = share.get(arch, 0.0) + w
+        first_seen.setdefault(arch, i)
+        total_w += w
+
+    if not share:
+        # Chunks declared format but none has a valid primary_archetype.
+        # Nothing useful to merge — omit the field.
+        return None
+
+    # Normalize shares; argmax with deterministic tie-break (highest share,
+    # then earliest chunk)
+    if total_w > 0:
+        share = {k: v / total_w for k, v in share.items()}
+    primary = sorted(
+        share.items(),
+        key=lambda kv: (-kv[1], first_seen[kv[0]]),
+    )[0][0]
+
+    secondaries = sorted(
+        [a for a, s in share.items() if a != primary and s >= _SECONDARY_ARCHETYPE_THRESHOLD],
+        key=lambda a: (-share[a], first_seen[a]),
+    )
+
+    # format_category: derive from primary_archetype (canonical mapping).
+    # Falls back to weighted-majority of emitted categories if the archetype
+    # is somehow unmapped (should not happen — archetype enum is closed).
+    category = _ARCHETYPE_TO_CATEGORY.get(primary)
+    if category is None:
+        cat_pairs: list[tuple[Any, float]] = [
+            (fmt.get("format_category"), w)
+            for _, fmt, w in indexed
+            if fmt.get("format_category")
+        ]
+        category = _weighted_majority(cat_pairs) if cat_pairs else None
+
+    # production_style: weighted majority
+    ps_pairs: list[tuple[Any, float]] = [
+        (fmt.get("production_style"), w)
+        for _, fmt, w in indexed
+        if fmt.get("production_style")
+    ]
+    production_style = _weighted_majority(ps_pairs) if ps_pairs else None
+
+    # meta_format: first non-absent (schema now omits "none")
+    meta_format = None
+    for _, fmt, _w in indexed:
+        mf = fmt.get("meta_format")
+        if mf:
+            meta_format = mf
+            break
+
+    # ugc_score: duration-weighted average
+    score_pairs = [
+        (float(fmt["ugc_score"]), w)
+        for _, fmt, w in indexed
+        if isinstance(fmt.get("ugc_score"), (int, float))
+    ]
+    ugc_score = _weighted_avg(score_pairs) if score_pairs else None
+
+    # trend_reference: first non-null string
+    trend_reference = None
+    for _, fmt, _w in indexed:
+        tr = fmt.get("trend_reference")
+        if isinstance(tr, str) and tr:
+            trend_reference = tr
+            break
+
+    # confidence: worst-confidence across all chunks' format.confidence maps
+    confidence_maps = [
+        fmt.get("confidence", {}) for _, fmt, _w in indexed if isinstance(fmt.get("confidence"), dict)
+    ]
+    confidence = _merge_confidence_map(confidence_maps) if confidence_maps else {}
+
+    out: dict[str, Any] = {
+        "primary_archetype": primary,
+        "production_style": production_style,
+    }
+    if category is not None:
+        out["format_category"] = category
+    if secondaries:
+        out["secondary_archetypes"] = secondaries
+    if meta_format:
+        out["meta_format"] = meta_format
+    if ugc_score is not None:
+        out["ugc_score"] = ugc_score
+    if trend_reference:
+        out["trend_reference"] = trend_reference
+    if confidence:
+        out["confidence"] = confidence
+    return out
+
+
+# ---------------------------------------------------------------------------
+# grounding_cues — per-field evidence array (schema v2.1+)
+# ---------------------------------------------------------------------------
+
+
+def _merge_grounding_cues(
+    chunks: list[tuple[Chunk, dict]],
+) -> list[dict] | None:
+    """Merge per-chunk ``grounding_cues`` arrays into a single array.
+
+    Returns None when no chunk emitted the field (caller omits the array).
+
+    Strategy: group entries by ``field_path``. For each path:
+      * Concatenate ``support`` arrays across chunks. When more than one
+        chunk contributes to the same path AND there are multiple chunks
+        total, prefix each support string with ``"[chunk-{i}] "`` so the
+        downstream reader can see the origin.
+      * Keep the first non-empty ``rejected`` value (later chunks may
+        disagree; the first is typically the one grounding the video-wide
+        opening decision).
+    """
+    per_path: dict[str, list[tuple[int, dict]]] = {}
+    any_emitted = False
+    for i, (_, art) in enumerate(chunks):
+        arr = art.get("grounding_cues")
+        if not isinstance(arr, list):
+            continue
+        any_emitted = True
+        for entry in arr:
+            if not isinstance(entry, dict):
+                continue
+            path = entry.get("field_path")
+            if not isinstance(path, str):
+                continue
+            per_path.setdefault(path, []).append((i, entry))
+
+    if not any_emitted:
+        return None
+
+    multi = len(chunks) > 1
+    out: list[dict] = []
+    # Emit paths in the canonical allowlist order for deterministic output
+    canonical_order = [
+        "editing_pacing.pacing_style",
+        "editing_pacing.motion_type_distribution",
+        "visual_style.color_palette",
+        "visual_style.suggested_playbook",
+        "narrative.hook_type",
+        "narrative.narrative_arc",
+        "format.primary_archetype",
+        "format.production_style",
+    ]
+    for path in canonical_order:
+        entries = per_path.get(path, [])
+        if not entries:
+            continue
+        support: list[str] = []
+        rejected: str | None = None
+        multi_chunk_contributes = multi and len({i for i, _ in entries}) > 1
+        for i, entry in entries:
+            e_sup = entry.get("support")
+            if isinstance(e_sup, list):
+                for s in e_sup:
+                    if not isinstance(s, str):
+                        continue
+                    support.append(f"[chunk-{i}] {s}" if multi_chunk_contributes else s)
+            if rejected is None:
+                r = entry.get("rejected")
+                if isinstance(r, str) and r:
+                    rejected = r
+        if not support:
+            continue  # schema requires >=1 support item
+        merged_entry: dict[str, Any] = {"field_path": path, "support": support}
+        if rejected:
+            merged_entry["rejected"] = rejected
+        out.append(merged_entry)
+
+    return out or None
+
+
+# ---------------------------------------------------------------------------
 # shot_boundary_source — RESEARCH Open Question 2
 # ---------------------------------------------------------------------------
 
@@ -955,6 +1224,16 @@ def merge_analyses(
     )
     if sbs is not None:
         merged["shot_boundary_source"] = sbs
+
+    # format (v2.1+, optional — omit when no chunk emitted it)
+    fmt = _merge_format(chunks, weights)
+    if fmt is not None:
+        merged["format"] = fmt
+
+    # grounding_cues (v2.1+, optional — omit when no chunk emitted it)
+    gc = _merge_grounding_cues(chunks)
+    if gc is not None:
+        merged["grounding_cues"] = gc
 
     merged["chunking_metadata"] = _build_chunking_metadata(chunks, provider)
 

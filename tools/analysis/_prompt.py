@@ -25,14 +25,14 @@ decision. Precision and calibrated uncertainty beat breadth.
 # Mission
 Emit a SINGLE JSON object validating against the response schema, covering
 five dimensions — editing_pacing, audio, visual_style, narrative, format —
-plus per-dimension `confidence` maps and a top-level `_cues` map.
+plus per-dimension `confidence` maps and a top-level `grounding_cues` array.
 
 # Schema drift rule
 If any rubric below mentions a field not present in the response schema,
 ignore that rubric line and obey the schema. The schema is the source of truth.
 
 # High-leverage fields (read the rubrics with these in mind)
-These seven route the downstream pipeline. Wrong values = wrong providers =
+These eight route the downstream pipeline. Wrong values = wrong providers =
 wasted generation credits:
   1. editing_pacing.pacing_style
   2. editing_pacing.motion_type_distribution
@@ -40,9 +40,10 @@ wasted generation credits:
   4. visual_style.suggested_playbook
   5. narrative.hook_type
   6. narrative.narrative_arc
-  7. format.primary_archetype (+ format.production_style)
-Each MUST get an entry in top-level `_cues` and an explicit `confidence`
-entry even when the value is "high".
+  7. format.primary_archetype
+  8. format.production_style
+Each MUST get a `grounding_cues` entry (see Decision discipline) and an
+explicit `confidence` entry even when the value is "high".
 
 # Dimension rubrics
 
@@ -143,58 +144,62 @@ entry even when the value is "high".
     1:1/9:16 + corporate  -> linkedin
     else                  -> unknown (confidence="low")
 
-## format — three-axis classification
-Pick ONE primary_archetype, ONE production_style, ONE meta_format (or "none").
-primary_archetype = dominant viewer-facing format. production_style = HOW it
-was made. When axes conflict (e.g. an ad polished to LOOK UGC), prefer the
-value that occupies the majority of runtime.
+## format — two-axis hierarchical classification
+First pick `format_category` (10 values — low cardinality, stable routing
+surface). Then pick the specific `primary_archetype` WITHIN that category.
+This two-step classification is more reliable than flat 39-way selection and
+gives the downstream pipeline a stable axis to route on even when archetype
+confidence is weak.
 
-Anti-pattern example: an ad-spec shot on an iPhone to LOOK like UGC is
-primary_archetype=<what it shows: testimonial / product_demo / pov_experience>,
-production_style=ugc, ugc_score~0.9 — NOT broadcast_polish.
+format_category (one of):
+  people_centric          a human subject drives the shot (speaks / presents / reacts)
+  companion_lifestyle     "with me" videos (GRWM, day-in-the-life, study/work along)
+  narrative_dramatic      storytelling (POV, storytime, short films, transformations)
+  educational_commercial  explanations, demos, tutorials, listicles, unboxings
+  animated                2D / 3D animation, motion graphics, stop-motion, typography
+  ai_generated            AI-synthesized video (realistic, stylized, or surreal ASMR)
+  footage_based           real-world footage narrated or edited together
+  sensory                 non-AI ASMR and tactile close-ups
+  platform_native         format specific to a platform feature (photo mode)
+  mixed                   genuinely cross-format; use rarely
 
-primary_archetype enum (short hints only for confusable pairs):
+primary_archetype within each category (pick ONE):
+  people_centric:          talking_head_studio | fake_podcast_clip | green_screen_talking_head
+                           | finfluencer_explainer | street_interview | duet_reaction
+                           | reaction_video | split_screen_collab | mockumentary
+  companion_lifestyle:     grwm_routine | day_in_the_life | vlog_lifestyle
+                           | work_with_me | study_with_me
+  narrative_dramatic:      pov_experience | micro_drama | cinematic_short
+                           | storytime | before_after_transformation
+  educational_commercial:  tutorial_screencast | product_demo | listicle_ranking
+                           | whiteboard_explainer | unboxing
+  animated:                cartoon_2d | cartoon_3d | anime | motion_graphics
+                           | kinetic_typography | stop_motion
+  ai_generated:            ai_video_realistic | ai_video_stylized | ai_asmr_surreal
+  footage_based:           stock_footage_narrated | documentary | sports_micro_highlight
+  sensory:                 asmr_tactile
+  platform_native:         photo_carousel_video
+  mixed:                   mixed_media
+
+Archetype disambiguation (only confusable pairs):
   talking_head_studio         single subject to camera, controlled setup
   fake_podcast_clip           shotgun mic + desk + laptop visible
   green_screen_talking_head   creator + screen-cap/article behind
   finfluencer_explainer       ticker/chart overlay + to-camera finance
-  street_interview            outdoor + visible handheld mic + Q&A
   duet_reaction               platform split-screen: original + reactor
   reaction_video              standalone creator reacting, no split
-  split_screen_collab         two+ creators on split
   mockumentary                scripted deadpan fake-interview
-  grwm_routine                "get ready with me" / routine-along
-  day_in_the_life             timestamp-labeled day arc
-  vlog_lifestyle              casual creator lifestyle narrative
-  work_with_me                companion work-session
-  study_with_me               companion study-session
   pov_experience              first-person "POV:" caption framing
-  micro_drama                 mini scripted scene with characters
-  cinematic_short             narrative short film with arc
-  storytime                   "the time I..." / confession opener
-  before_after_transformation transformation reveal
-  tutorial_screencast         screen recording + narration
-  product_demo                object in studio, camera around
-  listicle_ranking            top-N / tier-list / ranked
-  whiteboard_explainer        drawing-being-made
-  unboxing                    object-unpack focus
-  cartoon_2d                  illustrated drawn frames
-  cartoon_3d                  rigged CGI characters
-  anime                       Japanese-stylized animation
-  motion_graphics             typography + shapes, no character
-  kinetic_typography          text IS the subject, not overlay
-  stop_motion                 frame-by-frame object/clay
-  ai_video_realistic          AI video, photo-real
-  ai_video_stylized           AI video, painterly/anime stylized
-  ai_asmr_surreal             AI hyper-close-up impossible physics
-  stock_footage_narrated      licensed b-roll + VO
-  documentary                 real interviews + b-roll
-  sports_micro_highlight      broadcast logo + score bug + replay
-  asmr_tactile                macro cutting/crushing, no face
   photo_carousel_video        stills with pan/zoom + audio-driven cuts
-  mixed_media                 genuinely defies single category
+  ai_asmr_surreal             AI hyper-close-up impossible physics
+  asmr_tactile                macro cutting/crushing, no face
 
-production_style (from execution posture, NOT subject):
+secondary_archetypes (OPTIONAL array): list OTHER archetypes that cover
+>=20% of runtime. Omit when the video is single-format. Use when a video
+genuinely mixes (e.g. cold-open talking_head + demo b-roll would list
+[talking_head_studio, product_demo]).
+
+production_style (judge from execution posture, NOT subject):
   phone/handheld/no grade/native mic   -> ugc
   DSLR + basic grade + creator studio  -> creator_prosumer
   lit set + color graded + multicam    -> studio_produced
@@ -202,7 +207,12 @@ production_style (from execution posture, NOT subject):
   100% motion graphics                 -> motion_graphics_native
   AI-synthesized visuals               -> ai_generated
 
-meta_format — non-"none" ONLY when a known trend/format template is active:
+Anti-pattern: an ad-spec shot on an iPhone to LOOK like UGC is
+primary_archetype=<what it shows: testimonial / product_demo / pov_experience>,
+production_style=ugc, ugc_score~0.9 — NOT broadcast_polish.
+
+meta_format (OPTIONAL — OMIT THE FIELD ENTIRELY when no trend template
+is active; do NOT emit "none"):
   "POV:" caption framing            -> pov_caption
   "get ready with me" framing       -> grwm_caption
   "storytime"/"the time I" opener   -> storytime_caption
@@ -214,37 +224,45 @@ meta_format — non-"none" ONLY when a known trend/format template is active:
   green-screen overlay as content   -> green_screen_overlay
   TikTok Photo Mode / IG carousel   -> photo_mode
 
-ugc_score (0.0-1.0): how UGC-like the visual language is regardless of
+ugc_score (0.0-1.0): how UGC-like the visual language is, regardless of
 archetype. Ad-spec UGC scripted to LOOK like UGC scores HIGH here.
-ugc_signals (array): list only signals actually observed.
-trend_reference (string|null): name the specific trend template if any.
-platform_native_elements (array): tiktok_caption_style / reels_aesthetic_sticker
-/ shorts_chapter_card / duet_frame / stitch_frame / photo_mode_indicator.
-format_description: 1-2 prose sentences a producer could hand another
-creator to recreate this exact format.
+trend_reference (string|null): name the specific trend template if any
+(e.g. "POV you're the villain", "Day in the life of a...").
 
-# Decision discipline (grounding + confidence + nulls + _cues)
+# Decision discipline (grounding + confidence + nulls + grounding_cues)
 
 Grounding: every non-trivial field value must be traceable to an observable
 cue — a specific timestamp, a visible frame element, an audible line.
 
-`_cues` emission (REQUIRED in full mode): emit a top-level `_cues` object
-as sibling of the five dimensions. For each of the seven high-leverage
-fields, emit 1-3 timestamp-anchored observations that grounded the choice
-PLUS one rejected alternative. Format:
-  "_cues": {{
-    "narrative.hook_type": {{
+grounding_cues emission (REQUIRED in full mode): emit a top-level
+`grounding_cues` array with one object per high-leverage field. Shape:
+  "grounding_cues": [
+    {{
+      "field_path": "narrative.hook_type",
       "support": ["0:00-0:03 narrator: 'Most people are wrong...'"],
       "rejected": "question — phrased as statement, not literal question"
     }},
-    "editing_pacing.motion_type_distribution": {{
+    {{
+      "field_path": "editing_pacing.motion_type_distribution",
       "support": ["12 of 14 shots show subject-internal motion",
                   "0:14-0:17 particles move independent of camera"],
       "rejected": "animated_still — rejected: subjects themselves move"
     }}
-  }}
-If it is not in `_cues`, it did not happen. Replace any instinct to
-"internally justify" with a visible `_cues` entry.
+  ]
+
+Allowed `field_path` values (enum — any other path is rejected by the schema):
+  editing_pacing.pacing_style
+  editing_pacing.motion_type_distribution
+  visual_style.color_palette
+  visual_style.suggested_playbook
+  narrative.hook_type
+  narrative.narrative_arc
+  format.primary_archetype
+  format.production_style
+
+Ideally emit all eight entries in full mode (omit any whose field you
+genuinely cannot ground). If a cue is not in `grounding_cues`, it did not
+happen — replace any instinct to "internally justify" with a visible entry.
 
 Confidence calibration: models systematically overclaim "medium". Counteract:
   "high"   -> multiple converging cues
@@ -252,28 +270,31 @@ Confidence calibration: models systematically overclaim "medium". Counteract:
   "low"    -> weak/indirect cue, ambiguity, or short sample
 When in doubt, default to "low". For EVERY uncertain or absent field, add
 an entry to that dimension's `confidence` map mapping field_name -> "low".
-Emit explicit confidence entries for ALL SEVEN high-leverage fields even
+Emit explicit confidence entries for ALL EIGHT high-leverage fields even
 when the value is "high".
 
 Nulls: never emit null and never omit a required field — except
-music_tempo_bpm when has_music=false.
+music_tempo_bpm when has_music=false, and trend_reference which may be null.
 
 Shot boundaries: {bounds_line}
 
 # Output verification (run before emitting)
-1. Every required field has a value; no nulls outside the allowed exception.
+1. Every required field has a value; no nulls outside the allowed exceptions.
 2. shot_type_distribution and motion_type_distribution each sum to ~1.0.
 3. typography_style is prose (not a font family name).
 4. color_palette.primary has >=3 hex values.
 5. section_structure is contiguous 0.0s -> end-of-video, no gaps/overlaps.
-6. `_cues` covers all 7 high-leverage fields with support + rejected.
-7. `confidence` maps include entries for the 7 high-leverage fields.
-8. format.production_style is consistent with primary_archetype posture
+6. grounding_cues covers up to 8 high-leverage fields with support + rejected.
+7. `confidence` maps include entries for the 8 high-leverage fields.
+8. format.primary_archetype belongs to format.format_category's allowed set.
+9. format.production_style is consistent with primary_archetype posture
    (or `ugc_score` is high to explain the mismatch).
+10. If no trend template is active, meta_format is OMITTED (not set to "none").
 
 # Recap before output
-Re-verify the seven high-leverage fields: each has (a) a value, (b) a
-`_cues` entry with support + rejected, (c) an explicit `confidence` level.
+Re-verify the eight high-leverage fields: each has (a) a value, (b) a
+grounding_cues entry with support + rejected, (c) an explicit `confidence`
+level.
 
 # Output discipline
 Return ONLY the JSON object. First character `{{`, last character `}}`.

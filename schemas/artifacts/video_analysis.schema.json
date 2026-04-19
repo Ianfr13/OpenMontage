@@ -334,6 +334,174 @@
       "type": "string",
       "enum": ["scene_detect", "model", "hybrid"],
       "description": "Origin of shot boundaries — per ANLZ-05"
+    },
+    "format": {
+      "type": "object",
+      "description": "Format classification — hierarchical (category + archetype). Optional in v2.1; required in v3.0.",
+      "required": ["format_category", "primary_archetype", "production_style"],
+      "properties": {
+        "format_category": {
+          "type": "string",
+          "description": "Low-cardinality routing axis. Stable surface for pipeline provider selection.",
+          "enum": [
+            "people_centric",
+            "companion_lifestyle",
+            "narrative_dramatic",
+            "educational_commercial",
+            "animated",
+            "ai_generated",
+            "footage_based",
+            "sensory",
+            "platform_native",
+            "mixed"
+          ]
+        },
+        "primary_archetype": {
+          "type": "string",
+          "description": "Specific archetype within the category. 39-value enum.",
+          "enum": [
+            "talking_head_studio",
+            "fake_podcast_clip",
+            "green_screen_talking_head",
+            "finfluencer_explainer",
+            "street_interview",
+            "duet_reaction",
+            "reaction_video",
+            "split_screen_collab",
+            "mockumentary",
+            "grwm_routine",
+            "day_in_the_life",
+            "vlog_lifestyle",
+            "work_with_me",
+            "study_with_me",
+            "pov_experience",
+            "micro_drama",
+            "cinematic_short",
+            "storytime",
+            "before_after_transformation",
+            "tutorial_screencast",
+            "product_demo",
+            "listicle_ranking",
+            "whiteboard_explainer",
+            "unboxing",
+            "cartoon_2d",
+            "cartoon_3d",
+            "anime",
+            "motion_graphics",
+            "kinetic_typography",
+            "stop_motion",
+            "ai_video_realistic",
+            "ai_video_stylized",
+            "ai_asmr_surreal",
+            "stock_footage_narrated",
+            "documentary",
+            "sports_micro_highlight",
+            "asmr_tactile",
+            "photo_carousel_video",
+            "mixed_media"
+          ]
+        },
+        "secondary_archetypes": {
+          "type": "array",
+          "description": "Other archetypes that cover >=20% of runtime in multi-format videos.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "talking_head_studio", "fake_podcast_clip", "green_screen_talking_head",
+              "finfluencer_explainer", "street_interview", "duet_reaction",
+              "reaction_video", "split_screen_collab", "mockumentary",
+              "grwm_routine", "day_in_the_life", "vlog_lifestyle",
+              "work_with_me", "study_with_me", "pov_experience",
+              "micro_drama", "cinematic_short", "storytime",
+              "before_after_transformation", "tutorial_screencast", "product_demo",
+              "listicle_ranking", "whiteboard_explainer", "unboxing",
+              "cartoon_2d", "cartoon_3d", "anime", "motion_graphics",
+              "kinetic_typography", "stop_motion", "ai_video_realistic",
+              "ai_video_stylized", "ai_asmr_surreal", "stock_footage_narrated",
+              "documentary", "sports_micro_highlight", "asmr_tactile",
+              "photo_carousel_video", "mixed_media"
+            ]
+          }
+        },
+        "production_style": {
+          "type": "string",
+          "enum": [
+            "ugc",
+            "creator_prosumer",
+            "studio_produced",
+            "broadcast_polish",
+            "motion_graphics_native",
+            "ai_generated"
+          ]
+        },
+        "meta_format": {
+          "type": "string",
+          "description": "Active trend/format template (omit field when none applies).",
+          "enum": [
+            "pov_caption",
+            "grwm_caption",
+            "storytime_caption",
+            "tier_list",
+            "listicle_countdown",
+            "before_after_match_cut",
+            "duet_split",
+            "stitch_reply",
+            "green_screen_overlay",
+            "photo_mode"
+          ]
+        },
+        "ugc_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "How UGC-like the visual language is, regardless of archetype."
+        },
+        "trend_reference": {
+          "type": ["string", "null"],
+          "description": "Name of the specific viral trend template, if any."
+        },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "grounding_cues": {
+      "type": "array",
+      "description": "Timestamp-anchored evidence for high-leverage fields. One entry per grounded field. Optional in v2.1; required in v3.0.",
+      "items": {
+        "type": "object",
+        "required": ["field_path", "support"],
+        "properties": {
+          "field_path": {
+            "type": "string",
+            "description": "Dot-path of the field this cue grounds. Restricted to the high-leverage routing fields.",
+            "enum": [
+              "editing_pacing.pacing_style",
+              "editing_pacing.motion_type_distribution",
+              "visual_style.color_palette",
+              "visual_style.suggested_playbook",
+              "narrative.hook_type",
+              "narrative.narrative_arc",
+              "format.primary_archetype",
+              "format.production_style"
+            ]
+          },
+          "support": {
+            "type": "array",
+            "description": "Timestamp-anchored observations that grounded the choice.",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "rejected": {
+            "type": "string",
+            "description": "An alternative value considered and rejected, with one-line reasoning."
+          }
+        }
+      }
     }
   }
 }

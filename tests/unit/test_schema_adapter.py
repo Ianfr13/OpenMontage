@@ -167,3 +167,81 @@ class TestSchemaAdapter:
         assert api_schema["properties"]["editing_pacing"]["properties"]["pacing_style"]["enum"] == [
             "slow_contemplative", "steady_educational", "dynamic_social", "rapid_fire", "variable",
         ]
+
+
+# ----------------------------------------------------------------------
+# Schema extension v2.1: format + grounding_cues
+# ----------------------------------------------------------------------
+
+
+class TestSchemaExtensionV2_1:
+    """New fields (format, grounding_cues) must survive to_api_schema() flatten."""
+
+    def test_format_block_preserved(self):
+        from schemas.artifacts import load_schema
+
+        canonical = load_schema("video_analysis")
+        api = to_api_schema(canonical)
+        assert "format" in api["properties"]
+        fmt = api["properties"]["format"]
+        assert fmt["type"] == "object"
+        assert set(fmt["required"]) >= {"format_category", "primary_archetype", "production_style"}
+
+    def test_format_category_enum_intact(self):
+        from schemas.artifacts import load_schema
+
+        api = to_api_schema(load_schema("video_analysis"))
+        cat_enum = api["properties"]["format"]["properties"]["format_category"]["enum"]
+        assert "people_centric" in cat_enum
+        assert "ai_generated" in cat_enum
+        assert "mixed" in cat_enum
+        assert len(cat_enum) == 10
+
+    def test_primary_archetype_has_39_values(self):
+        from schemas.artifacts import load_schema
+
+        api = to_api_schema(load_schema("video_analysis"))
+        enum = api["properties"]["format"]["properties"]["primary_archetype"]["enum"]
+        assert len(enum) == 39
+        assert "talking_head_studio" in enum
+        assert "ai_asmr_surreal" in enum
+
+    def test_meta_format_does_not_include_none(self):
+        """Post-review consensus: OMIT the field; do not set "none"."""
+        from schemas.artifacts import load_schema
+
+        api = to_api_schema(load_schema("video_analysis"))
+        mf_enum = api["properties"]["format"]["properties"]["meta_format"]["enum"]
+        assert "none" not in mf_enum
+
+    def test_grounding_cues_is_array_of_objects(self):
+        """OpenAI strict-mode compat: dynamic-key maps fail; array-of-objects works."""
+        from schemas.artifacts import load_schema
+
+        api = to_api_schema(load_schema("video_analysis"))
+        gc = api["properties"]["grounding_cues"]
+        assert gc["type"] == "array"
+        assert gc["items"]["type"] == "object"
+        assert set(gc["items"]["required"]) == {"field_path", "support"}
+
+    def test_grounding_cues_field_path_restricted_to_allowlist(self):
+        from schemas.artifacts import load_schema
+
+        api = to_api_schema(load_schema("video_analysis"))
+        fp_enum = (
+            api["properties"]["grounding_cues"]["items"]["properties"]["field_path"]["enum"]
+        )
+        assert "editing_pacing.pacing_style" in fp_enum
+        assert "format.primary_archetype" in fp_enum
+        # Arbitrary paths not in allowlist must not be accepted
+        assert "source.duration_seconds" not in fp_enum
+        assert len(fp_enum) == 8
+
+    def test_format_and_grounding_cues_are_optional(self):
+        """Backward compat: v2.0 artifacts without these new fields still validate."""
+        from schemas.artifacts import load_schema
+
+        canonical = load_schema("video_analysis")
+        required = canonical.get("required", [])
+        assert "format" not in required
+        assert "grounding_cues" not in required

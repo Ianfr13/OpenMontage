@@ -1795,3 +1795,172 @@ class TestGroundingCuesRound3:
         assert "hallucinated_genre" not in sec
         # Warning logged
         assert any("hallucinated_genre" in rec.message for rec in caplog.records)
+
+
+# ----------------------------------------------------------------------
+# content_identity — what the format is OF (v2.1+)
+# ----------------------------------------------------------------------
+
+
+class TestContentIdentityMerge:
+    """Merge strategy for format.content_identity.
+
+    - subjects / aesthetic_tags / recurring_visual_elements: union + dedup
+    - setting: weighted majority
+    - content_description: concat with chunk labels (multi-chunk) or
+      passthrough (single)
+    """
+
+    def _fmt_with_ci(self, content_identity: dict) -> dict:
+        return {
+            "format_category": "animated",
+            "primary_archetype": "anime",
+            "production_style": "ai_generated",
+            "content_identity": content_identity,
+        }
+
+    def test_no_content_identity_emits_no_block(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": {
+                    "format_category": "animated",
+                    "primary_archetype": "anime",
+                    "production_style": "ai_generated",
+                }},
+                {"format": {
+                    "format_category": "animated",
+                    "primary_archetype": "anime",
+                    "production_style": "ai_generated",
+                }},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert "content_identity" not in merged["format"]
+
+    def test_single_chunk_passthrough_preserves_all_fields(self, fake_video_chunks):
+        ci = {
+            "subjects": ["anthropomorphic skeleton warrior"],
+            "setting": "vast orange desert with cacti and oases",
+            "aesthetic_tags": ["cel-shaded anime", "stylized anatomy"],
+            "recurring_visual_elements": ["cacti", "sand dunes"],
+            "content_description": "AI-generated cel-shaded anime of skeleton survivors in a desert.",
+        }
+        chunks = fake_video_chunks(
+            n=1,
+            overrides=[{"format": self._fmt_with_ci(ci)}],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert merged["format"]["content_identity"] == ci
+
+    def test_subjects_union_deduped_across_chunks(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=3,
+            overrides=[
+                {"format": self._fmt_with_ci({
+                    "subjects": ["skeleton warrior", "skeleton thief"],
+                })},
+                {"format": self._fmt_with_ci({
+                    "subjects": ["skeleton thief", "skeleton explorer"],
+                })},
+                {"format": self._fmt_with_ci({
+                    "subjects": ["skeleton explorer"],
+                })},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        ci = merged["format"]["content_identity"]
+        # Order-preserved union: warrior (chunk 0) first, then thief, then explorer
+        assert ci["subjects"] == ["skeleton warrior", "skeleton thief", "skeleton explorer"]
+
+    def test_aesthetic_tags_union(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": self._fmt_with_ci({
+                    "aesthetic_tags": ["cel-shaded anime", "heavy black outlines"],
+                })},
+                {"format": self._fmt_with_ci({
+                    "aesthetic_tags": ["exaggerated anime eyes", "cel-shaded anime"],
+                })},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        tags = merged["format"]["content_identity"]["aesthetic_tags"]
+        assert set(tags) == {"cel-shaded anime", "heavy black outlines", "exaggerated anime eyes"}
+
+    def test_recurring_elements_union(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": self._fmt_with_ci({
+                    "recurring_visual_elements": ["cacti", "sand"],
+                })},
+                {"format": self._fmt_with_ci({
+                    "recurring_visual_elements": ["water oases", "cacti"],
+                })},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert set(merged["format"]["content_identity"]["recurring_visual_elements"]) == {
+            "cacti", "sand", "water oases"
+        }
+
+    def test_setting_weighted_majority(self, fake_video_chunks):
+        # chunk 0 (weight 200) vs chunks 1+2 (weight 100 each) saying same thing
+        chunks = fake_video_chunks(
+            n=3,
+            chunk_seconds=100.0,
+            overrides=[
+                {"format": self._fmt_with_ci({"setting": "vast orange desert"})},
+                {"format": self._fmt_with_ci({"setting": "green forest"})},
+                {"format": self._fmt_with_ci({"setting": "green forest"})},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        # green forest has 2/3 weight share
+        assert merged["format"]["content_identity"]["setting"] == "green forest"
+
+    def test_content_description_multi_chunk_concats(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": self._fmt_with_ci({
+                    "content_description": "Desert scene with skeletons fighting.",
+                })},
+                {"format": self._fmt_with_ci({
+                    "content_description": "Ocean scene with skeletons swimming.",
+                })},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        desc = merged["format"]["content_identity"]["content_description"]
+        # Both descriptions present with chunk-N labels
+        assert "Desert scene" in desc
+        assert "Ocean scene" in desc
+        assert "chunk-0" in desc or "chunk-1" in desc
+
+    def test_content_description_single_chunk_unlabeled(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=1,
+            overrides=[
+                {"format": self._fmt_with_ci({
+                    "content_description": "Single chunk desert adventure.",
+                })},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        desc = merged["format"]["content_identity"]["content_description"]
+        assert desc == "Single chunk desert adventure."
+        assert "chunk-" not in desc  # no labeling on single-chunk passthrough
+
+    def test_empty_content_identity_omits_block(self, fake_video_chunks):
+        chunks = fake_video_chunks(
+            n=2,
+            overrides=[
+                {"format": self._fmt_with_ci({"subjects": [], "aesthetic_tags": []})},
+                {"format": self._fmt_with_ci({"subjects": [], "aesthetic_tags": []})},
+            ],
+        )
+        merged = merge_analyses(chunks, provider="gemini")
+        assert "content_identity" not in merged["format"]

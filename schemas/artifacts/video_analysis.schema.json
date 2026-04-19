@@ -449,6 +449,35 @@
             "type": "string",
             "enum": ["low", "medium", "high"]
           }
+        },
+        "content_identity": {
+          "type": "object",
+          "description": "What the format is OF — subject matter, setting, and aesthetic particulars. Separate from WHAT the format IS (primary_archetype). Captures 'animated anime of skeletons in a desert' rather than just 'anime'. Drives character design, environment prompts, and style-reproduction guidance downstream.",
+          "properties": {
+            "subjects": {
+              "type": "array",
+              "description": "Main subjects / characters / objects on screen. 1-5 short noun phrases. Be specific — 'anthropomorphic skeleton warrior with visible ribcage' beats 'character'.",
+              "items": { "type": "string" }
+            },
+            "setting": {
+              "type": "string",
+              "description": "Where / when the content takes place, in one prose phrase. Specific — 'vast orange desert with scattered cacti and oases' beats 'outdoor scene'."
+            },
+            "aesthetic_tags": {
+              "type": "array",
+              "description": "Style descriptors beyond color_palette — particulars of the visual language. 3-8 tags. Examples: 'cel-shaded anime', 'stylized anatomy (visible ribcages)', 'exaggerated anime eyes', 'heavy black outlines'.",
+              "items": { "type": "string" }
+            },
+            "recurring_visual_elements": {
+              "type": "array",
+              "description": "Visual motifs that repeat across the video (props, environments, symbols). 2-8 items. Examples: ['cacti', 'water oases', 'sand dunes', 'torches'].",
+              "items": { "type": "string" }
+            },
+            "content_description": {
+              "type": "string",
+              "description": "One prose sentence a producer could hand to another creator to recreate this content at a high level. Synthesizes subjects + setting + aesthetic."
+            }
+          }
         }
       }
     },

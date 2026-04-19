@@ -247,3 +247,21 @@ class TestSchemaExtensionV2_1:
         required = canonical.get("required", [])
         assert "format" not in required
         assert "grounding_cues" not in required
+
+    def test_content_identity_block_present(self):
+        """format.content_identity exists, is optional, and has the 5 expected fields."""
+        from schemas.artifacts import load_schema
+
+        api = to_api_schema(load_schema("video_analysis"))
+        ci = api["properties"]["format"]["properties"].get("content_identity")
+        assert ci is not None
+        assert ci["type"] == "object"
+        assert set(ci["properties"].keys()) == {
+            "subjects",
+            "setting",
+            "aesthetic_tags",
+            "recurring_visual_elements",
+            "content_description",
+        }
+        # Not in format.required — purely optional
+        assert "content_identity" not in api["properties"]["format"].get("required", [])

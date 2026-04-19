@@ -229,6 +229,44 @@ archetype. Ad-spec UGC scripted to LOOK like UGC scores HIGH here.
 trend_reference (string|null): name the specific trend template if any
 (e.g. "POV you're the villain", "Day in the life of a...").
 
+### format.content_identity — what the format is OF
+The archetype tells the pipeline HOW the video is made. content_identity
+tells it WHAT the video depicts — subjects, setting, aesthetic particulars.
+"anime" is the archetype; "anime of skeleton characters in a desert" is
+the content identity. Downstream character + environment + style prompts
+depend on this being concrete.
+
+Fill content_identity with these five fields (inside the format block):
+
+- subjects (array, 1-5): main subjects / characters / objects. Specific,
+  not generic.
+    GOOD: "anthropomorphic skeleton warrior with visible ribcage"
+    BAD:  "character"
+    GOOD: "vintage 1960s Ford Mustang, cherry red, with racing stripes"
+    BAD:  "car"
+- setting (string, one prose phrase): where / when it takes place.
+    GOOD: "vast orange desert with scattered cacti and oases, daylight"
+    BAD:  "outdoor scene"
+- aesthetic_tags (array, 3-8): visual-language particulars BEYOND color.
+  Things a style-transfer prompt would reuse.
+    Examples: "cel-shaded anime", "stylized anatomy (visible ribcages)",
+              "exaggerated anime eyes", "dynamic action poses",
+              "heavy black outlines", "hand-drawn ink lines",
+              "low-poly 3D", "shallow depth of field"
+- recurring_visual_elements (array, 2-8): motifs that repeat throughout
+  the video (props, environmental fixtures, symbolic objects).
+    Examples: ["cacti", "water oases", "sand dunes", "torches", "compass"]
+- content_description (string, ONE sentence): synthesizes subjects +
+  setting + aesthetic into a single prompt-ready line a producer could
+  hand to another creator.
+    GOOD: "AI-generated cel-shaded anime of three anthropomorphic skeleton
+           characters attempting to survive five days across a vast orange
+           desert with occasional oases."
+    BAD:  "An animated video about characters in a desert."
+
+Be specific. The test: could a creator reproduce the look from your
+content_identity alone, without watching the video? Aim for yes.
+
 # Decision discipline (grounding + confidence + nulls + grounding_cues)
 
 Grounding: every non-trivial field value must be traceable to an observable

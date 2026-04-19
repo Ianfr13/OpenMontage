@@ -983,6 +983,11 @@ def _merge_format(
     ]
     confidence = _merge_confidence_map(confidence_maps) if confidence_maps else {}
 
+    # content_identity: what the format is OF (subjects, setting, aesthetic).
+    # Merge independently — union arrays, weighted-majority for setting,
+    # concat with chunk labels for content_description.
+    content_identity = _merge_content_identity(indexed)
+
     out: dict[str, Any] = {
         "format_category": category,
         "primary_archetype": primary,
@@ -998,7 +1003,84 @@ def _merge_format(
         out["trend_reference"] = trend_reference
     if confidence:
         out["confidence"] = confidence
+    if content_identity:
+        out["content_identity"] = content_identity
     return out
+
+
+def _merge_content_identity(
+    indexed: list[tuple[int, dict, float]],
+) -> dict | None:
+    """Merge per-chunk ``format.content_identity`` blocks.
+
+    Returns None when no chunk emitted content_identity or when all chunks'
+    entries are empty after merging.
+
+    Strategy:
+      * subjects, aesthetic_tags, recurring_visual_elements: union + dedup,
+        preserving first-seen chunk order (``_union_dedup`` primitive).
+      * setting: weighted majority (_weighted_majority); on ties, first chunk
+        wins. Unique free-form phrases rarely collide; effectively "first".
+      * content_description: concat with [chunk-N] labels via
+        ``_concat_freetext`` when >1 chunk contributes, else the single string.
+    """
+    per_chunk_ci: list[tuple[int, dict, float]] = [
+        (i, fmt["content_identity"], w)
+        for i, fmt, w in indexed
+        if isinstance(fmt.get("content_identity"), dict)
+    ]
+    if not per_chunk_ci:
+        return None
+
+    def _collect_array(key: str) -> list[str]:
+        arrays = []
+        for _, ci, _w in per_chunk_ci:
+            v = ci.get(key)
+            if isinstance(v, list):
+                arrays.append([x for x in v if isinstance(x, str) and x])
+        return _union_dedup(arrays) if arrays else []
+
+    subjects = _collect_array("subjects")
+    aesthetic_tags = _collect_array("aesthetic_tags")
+    recurring = _collect_array("recurring_visual_elements")
+
+    setting_pairs: list[tuple[Any, float]] = [
+        (ci["setting"], w)
+        for _, ci, w in per_chunk_ci
+        if isinstance(ci.get("setting"), str) and ci["setting"]
+    ]
+    setting = _weighted_majority(setting_pairs) if setting_pairs else None
+
+    descriptions = [
+        ci.get("content_description") if isinstance(ci.get("content_description"), str) else None
+        for _, ci, _w in per_chunk_ci
+    ]
+    chunk_labels = [f"chunk-{i}" for i, _, _ in per_chunk_ci]
+    # Drop None entries but keep positional chunk labels aligned.
+    kept = [(d, lbl) for d, lbl in zip(descriptions, chunk_labels) if d]
+    if kept:
+        if len(kept) == 1:
+            content_description: str | None = kept[0][0]
+        else:
+            content_description = _concat_freetext(
+                [d for d, _ in kept],
+                [lbl for _, lbl in kept],
+            )
+    else:
+        content_description = None
+
+    ci_out: dict[str, Any] = {}
+    if subjects:
+        ci_out["subjects"] = subjects
+    if setting:
+        ci_out["setting"] = setting
+    if aesthetic_tags:
+        ci_out["aesthetic_tags"] = aesthetic_tags
+    if recurring:
+        ci_out["recurring_visual_elements"] = recurring
+    if content_description:
+        ci_out["content_description"] = content_description
+    return ci_out or None
 
 
 # ---------------------------------------------------------------------------
